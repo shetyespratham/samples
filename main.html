@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="text/javascript">
+var loggedin="yes";
+var savedyn="n";
+var dirty=0;
+var user="kailas";
+var pass="12345678";
+var myip="";
+uapikey="A4GE7VHYHY5C6ZM7"
+readkey="RYG6NDS17USB5E0M"
+chnlid="1880625"
+data='[{"id":1880625,"name":"AeroSprayerIP","description":"","latitude":"0.0","longitude":"0.0","created_at":"2022-10-01T21:09:34Z","elevation":"","last_entry_id":null,"public_flag":false,"url":"","ranking":30,"metadata":"","license_id":0,"github_url":null,"tags":[],"api_keys":[{"api_key":"CW5R1A4AR4US2TXD","write_flag":true},{"api_key":"RYG6NDS17USB5E0M","write_flag":false}]},{"id":1880627,"name":"AeroSprayerRecords","description":"","latitude":"0.0","longitude":"0.0","created_at":"2022-10-01T21:24:20Z","elevation":"","last_entry_id":null,"public_flag":false,"url":"","ranking":30,"metadata":"","license_id":0,"github_url":null,"tags":[],"api_keys":[{"api_key":"L0XHLI5CA04DFV2Z","write_flag":true},{"api_key":"7K6YO0W0EMFONZBK","write_flag":false}]},{"id":1880652,"name":"AeroSprayerCurrentSensors","description":"","latitude":"0.0","longitude":"0.0","created_at":"2022-10-02T01:44:30Z","elevation":"","last_entry_id":null,"public_flag":false,"url":"","ranking":30,"metadata":"","license_id":0,"github_url":null,"tags":[],"api_keys":[{"api_key":"YG8OS4JYT1VYEXMA","write_flag":true},{"api_key":"R1JGCT8WEAZQ6SGR","write_flag":false}]}]'
+
+//getText("http://api.thingspeak.com/channels.json?api_key=A4GE7VHYHY5C6ZM7")
+text2="https://thingproxy.freeboard.io/fetch/https://api.thingspeak.com/channels.json?api_key=A4GE7VHYHY5C6ZM7"
+/* getText(text2);
+
+async function getText(text) {
+   let text1 = await fetch(text);
+   let myText = await text1.text();
+   alert("Channels:"+myText)
+   const myArr = JSON.parse(myText);
+   for (i = 0; i < myArr.length; i++) {
+       if ( myArr[i].name == "AeroSprayerIP" ) {
+            chnlid = myArr[i].id
+            readkey = myArr[i].api_keys[1].api_key 
+       }
+   }
+}
+
+*/
+
+text2="https://thingproxy.freeboard.io/fetch/api.thingspeak.com/channels/"+chnlid+"/feeds/last.json?api_key="+readkey
+getText(text2);
+async function getText(text2) {
+   let text1 = await fetch(text2);
+   let myText = await text1.text();
+   alert("IP:"+myText)
+   const myArr = JSON.parse(myText);
+   sysip = myArr.field1
+} 
+
+
+//var findIP = new Promise(r=>{var w=window,a=new (w.RTCPeerConnection||w.mozRTCPeerConnection||w.webkitRTCPeerConnection)({iceServers:[]}),b=()=>{};a.createDataChannel("");a.createOffer(c=>a.setLocalDescription(c,b,b),b);a.onicecandidate=c=>{try{c.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/g).forEach(r)}catch(e){}}})
+
+//alert("Please wait; Searching for your Automated Watering system on router")
+//for (i = 1; i < 10000; i++) {
+//   findIP.then(ip => myip = ip).catch(e => console.error(e))
+//   if (myip != "") {
+//        i = 10000
+//   }
+//}
+
+if (myip == "") {
+   myip="192.168.29.10"
+   sysip="192.168.29.167"
+}
+
+//ipind=myip.split(".");
+//for (i=2; i < 254; i++) {
+//    chkip= ipind[0]+"."+ipind[1]+"."+ipind[2]+"."+i
+//    getText("http://"+chkip+":/areyouthere")
+//    async function getText(text) {
+//       let text1 = await fetch(text)
+//       let myText = await text1.text();
+//       ip=myText;
+//       if (ip != "nil") { 
+//          alert("ip found of your sprayer system:"+ip);
+//          sysip=ip;
+//       }
+//    }
+//    ip = ""
+//  while ( ip == "" ) {
+//     setTimeout(function(){x=0}, 4000)
+//     ip="nil";
+//  }
+//}
+
+function netsave() {
+    var ssid = document.getElementById("ssid").value;
+    var wpass = document.getElementById("wpwdid").value;
+    var syslgn = document.getElementById("syslgn").value;
+    var syspwd = document.getElementById("syspwd").value;
+    var syspwd2 = document.getElementById("syspwd2").value;
+    if (wpass.length < 8 && wpass.length > 0 ) {
+       return false;
+    }
+    if (wpass.length > 0 && ssid.length == 0) {
+          alert("You must specify SSID if want to set/change password")
+          return false;
+    }
+    if (syspwd != syspwd2) {
+       alert("Passwords do not match")
+       return false;
+    }
+    if (syspwd.length > 0 && syslgn.length == 0) {
+          alert("You must specify Login ID if want to set/change password")
+          return false;
+    }
+
+    getText("http://"+sysip+":/netsave?ssid=" + ssid + "&wpass=" + wpass + "&syslgn=" + syslgn + "&syspwd=" + syspwd)
+    async function getText(text) {
+       let text1 = await fetch(text);
+       let myText = await text1.text();
+       netsaved=this.myText;
+       if (netsaved == "yes") {
+         alert("Network Configuration saved");
+       } else {
+         alert("Error; Network Configuration NOT saved");
+       }
+    }
+}
+function uploadfile() {
+    var upname = document.getElementById("upname").value;
+    getText("http://"+sysip+":/upload?wuser=" + wuser + "&wpass=" + wpass + "&nuser=" + nuser + "&npass=" + npass)
+    async function getText(text) {
+       let text1 = await fetch(text);
+       let myText = await text1.text();
+          uploaded=myText;
+          if (uploaded == "yes") {
+               alert("File uploaded Successfully");
+          } else {
+               alert("Error; Could not upload the file");
+          }
+    }
+}
+
+function sfunction() {
+    getText("http://"+sysip+":/sfunction")
+    async function getText(text) {
+       let text1 = await fetch(text);
+       let myText = await text1.text();
+       alert(myText);
+          svalues=myText.split("!");
+          document.getElementById("srain").value=svalues[0];
+          document.getElementById("stemp").value=svalues[1];
+          document.getElementById("shumid").value=svalues[2];
+          document.getElementById("son").value=svalues[3];
+          document.getElementById("soff").value=svalues[4];
+          document.getElementById("sfson").value=svalues[5];
+          document.getElementById("sfsoff").value=svalues[6];
+          document.getElementById("sairon").value=svalues[7];
+          document.getElementById("sairoff").value=svalues[8];
+          document.getElementById("sdaynight").value=svalues[9];
+          document.getElementById("snutweight").value=svalues[10];
+          document.getElementById("snuttemp").value=svalues[11];
+          document.getElementById("snutph").value=svalues[12];
+          document.getElementById("snutppm").value=svalues[13];
+          document.getElementById("smotdet").value=svalues[14];
+    }
+}
+
+function sendlogin() {
+    user = document.getElementById("uidid").value;
+    pass = document.getElementById("pwdid").value;
+    getText("http://" + sysip + ":/chkcred?user=" + user + "&pass=" + pass)
+    async function getText(text) {
+       let text1 = await fetch(text);
+       let myText = await text1.text();
+       loggedin=myText;
+       if (loggedin == "yes") {
+          document.getElementById("uidid").disabled=true;
+          document.getElementById("pwdid").disabled=true;
+          document.getElementById("lgnbut").disabled=true;
+       } else {
+                  alert("Please enter correct login details");
+               }
+    }
+}
+
+function Restart() {
+    if (dirty == 1) {
+       var r = confirm("Form Changed; Press OK to close without Save or Press Cancel");
+       if (r == false) {
+          return false;
+       }
+    }
+    getText("http://"+sysip+":/restart")
+    async function getText(text) {
+       let text1 = await fetch(text);
+       let myText = await text1.text();
+    }
+    alert("This window is getting closed now");
+    window.open('', '_self', ''); window.close();
+}
+
+function insertitem(event, typetext) {
+    if (typetext == "S" || typetext == "C" || typetext == 'M' || typetext == 'U' || typetext == 'T') {
+       if (loggedin != "yes") {
+          alert("Please login before using the System");
+          return;
+       }
+    }
+    var ij, tabcontent, tablinks;
+    tabcontent = document.getElementsByClassName("tabcontent");
+    for (ij = 0; ij < tabcontent.length; ij++) {
+        tabcontent[ij].style.display = "none";
+    }
+    tablinks = document.getElementsByClassName("tablinks");
+    for (ij = 0; ij < tablinks.length; ij++) {
+        tablinks[ij].className = tablinks[ij].className.replace(" active", "");
+    }
+    document.getElementById(typetext).style.display = "block";
+    event.currentTarget.className += " active";
+}
+//function raindscript() {
+//   var slider = document.getElementById("raindid");
+//   var output = document.getElementById("raindspan");
+//   output.innerHTML = slider.value;
+//   dirty=1;
+//}
+function twihelp() {
+alert ("1.  Create Account on Twilio; go to https://www.twilio.com<br>\n\
+2.  Note down your email id used and password for Twilio\n\
+3.  verify your email by logging into your email account\n\
+4.  verify your phone number in twilio by getting OTP in SMS\n\
+5.  click on Account;API keys & tokens\n\
+6.  Note down your Twilio Account SID\n\
+7.  Note down your Twilio Authority Token\n\
+8.  click on console;Messaging;Get Set Up;Start setup\n\
+9.  use some random service name e.g. 'MyNameServie'; save\n\
+10. Login again to thingspeak; Click on Apps; Click on New ThingHTTP\n\
+11. Type Any Name for ThingHTTP service\n\
+12. Note down your ThingHTTP API Key\n\
+13. in URL type 'https://api.twilio.com/2010-04-01/Accounts/(Twilio Account SID)/Messages.json'\n\
+14. HTTP Auth Username: (Twilio Account SID)\n\
+15. HTTP Auth Password: (Twilio Auth Toen)\n\
+16. Method: 'POST'; Content Type 'application/x-www-form-urlencoded'\n\
+17. HTTP Version: '1.1'\n\
+18. Body: '(Your Twilio Number)&To=%%number%%&Body=%%message%%'\n\
+19. Save ThingHTTP record")
+}
+function thnghelp() {
+   alert("  Complete communication with outside world is over SSL\n\n\
+Please do this setup carefully using your laptop or computer.  After this procedure your aeroponic system can send SMS to your mobile in case of any alerts like if sprayer did not work, movement of any person/livestock during night, nutrient level went below threshold etc.\n\n\
+\
+  It also logs your sensors data and pump ON/OFF timings on ThingSpeak Server for further Analysis of growth of your crop and respective watering schedule you followed along with nutrient levels and qualities\n\n\
+1.  Visit https://thingspeak.com; Get Started For Free; Enter your email\n\
+2.  Click on 'Create one!'; fill your information; Continue\n\
+3.  Check 'Use this email for my MathWorks Account'; Continue\n\
+4.  Verify your email address by opening your mails\n\
+5.  Continue on Thingspeak website; enter your password for Thingspeak\n\
+6.  Click on My Profile from Right Top Menu and note down User API Key")
+}
+function thngload() {
+   getText("http://"+sysip+":/thngload")
+    async function getText(text) {
+       let text1 = await fetch(text);
+       let myText = await text1.text();
+       if (myText == "not found") {
+          alert(myText);
+          return ;
+       }
+       var filerow=myText.split("!");
+       var x1 = document.getElementById("thnguapiid").value=filerow[0];
+       var x2 = document.getElementById("twisidid").value=filerow[1];
+       var x3 = document.getElementById("twitknid").value=filerow[2];
+       var x4 = document.getElementById("thnghttpid").value=filerow[3];
+     }
+}
+function thngsave() {
+   var x1 = document.getElementById("thnguapiid").value;
+   var x2 = document.getElementById("twisidid").value;
+   var x3 = document.getElementById("twitknid").value;
+   var x4 = document.getElementById("thnghttpid").value;
+   if (x1 == "" || x2 == "" || x3 == "" || x4 == "") {
+      alert("SID, KEY or Token can not be empty");
+      return false;
+   }
+   getText("http://"+sysip+":/thngsave"+"?data="+x1+"!"+x2+"!"+x3+"!"+x4)
+    async function getText(text) {
+       let text1 = await fetch(text);
+       let myText = await text1.text;
+       savedyn=myText;
+       if (savedyn == "saved") {
+          alert("Record Saved");
+          dirty=0;
+       } else {
+         alert("Could not save record")
+       }
+    }
+}
+
+function savefile() {
+   var table = document.getElementById("ttable");
+   var lastrow = table.rows.length;
+   if (lastrow == 1) {
+      alert("You must have at least 1 record in temperature table");
+      return false;
+   }
+   var lasttemp = table.rows[lastrow-1].cells[1].innerHTML;
+   if (lasttemp != 60) {
+      alert("You must define temperature range upto 60")
+      return false;
+   }
+   if (isNaN(parseInt(document.getElementById("noffpid").value))) {
+      alert("You must enter Night OFF % time; 0 for no change")
+      return false;
+   }
+   if (isNaN(parseInt(document.getElementById("hoffpid").value))) {
+      alert("You must enter Humidity OFF % time; 0 for no change")
+      return false;
+   }
+   if (isNaN(parseInt(document.getElementById("fsonid").value))) {
+      alert("You must enter FailSafe ON % time; 0 for no pump")
+      return false;
+   }
+   if (isNaN(parseInt(document.getElementById("aironid").value))) {
+      alert("You must enter AirPump ON % time; 0 for no pump")
+      return false;
+   }
+   if (isNaN(parseInt(document.getElementById("fsoffid").value))) {
+      alert("You must enter FailSafe OFF % time; 0 for no pump")
+      return false;
+   }
+   if (isNaN(parseInt(document.getElementById("airoffid").value))) {
+      alert("You must enter AirPump OFF % time; 0 for no pump")
+      return false;
+   }
+   var file2save = document.getElementById("cfgname").value;
+//   var filerow = document.getElementById("raindid").value;
+   filerow = document.getElementById("noffpid").value;
+   filerow = filerow + "!" + document.getElementById("hoffpid").value;
+   filerow = filerow + "!" + document.getElementById("fsonid").value;
+   filerow = filerow + "|" + document.getElementById("fsoffid").value;
+   filerow = filerow + "!";
+   for (var i=1; i < table.rows.length; i++) {
+       filerow = filerow + table.rows[i].cells[0].innerHTML;
+       filerow = filerow + ","
+       filerow = filerow + table.rows[i].cells[1].innerHTML;
+       filerow = filerow + ","
+       filerow = filerow + table.rows[i].cells[2].innerHTML;
+       filerow = filerow + ","
+       filerow = filerow + table.rows[i].cells[3].innerHTML;
+       if (i < table.rows.length - 1)
+          filerow = filerow + "|"
+   }
+   getText("http://"+sysip+":/savefile?save2file=" + file2save + "&data=" + filerow)
+    async function getText(text) {
+       let text1 = await fetch(text);
+       let myText = await text1.text();
+       savedyn=myText;
+       if (savedyn == "saved") {
+          alert("Record Saved");
+          document.getElementById("savefileid").disabled=true;
+          document.getElementById("loadfileid").disabled=false;
+          dirty=0;
+       } else { 
+         alert("Could not save record")
+       }
+    }
+}
+function rousave() {
+   var xhttp = new XMLHttpRequest();
+   var roussid = document.getElementById("selectrouid").value;
+   var roupwd = document.getElementById("rpwdid").value;
+   getText("http://"+sysip+":saverourec?roussid=" + roussid + "&roupwd=" + roupwd)
+    async function getText(text) {
+       let text1 = await fetch(text);
+       let myText = await text1.text();
+       if (myText == "Record saved") {
+         alert("Record saved");
+       } else {
+         alert("Could not save Record");
+       }
+    }
+}
+function addtemp() {
+      var f1 = document.getElementById("fromtempid").value;
+      var f2 = document.getElementById("totempid").value;
+      var f3 = document.getElementById("onttimeid").value;
+      var f4 = document.getElementById("offttimeid").value;
+      if (isNaN(parseInt(f2))) {
+         alert("Please specify To Centigrade");
+         document.getElementById("totempid").focus()
+         return false;
+      }
+      if (isNaN(parseInt(f3))) {
+         alert("Please specify motor ON time in seconds");
+         document.getElementById("onttimeid").focus()
+         return false;
+      }
+      if (isNaN(parseInt(f4))) {
+         alert("Please specify motor OFF time in seconds");
+         document.getElementById("offttimeid").focus()
+         return false;
+      }
+      if (f2 > 60) {
+         alert("To temperature can not exceed 60 deg centi")
+         document.getElementById("totempid").focus()
+         return false;
+      }
+      if (f3 > 6600) {
+         alert("On time or OFF time can not be > 6600 seconds")
+         document.getElementById("onttimeid").focus()
+         return false;
+      }
+      if (f4 > 6600) {
+         alert("On time or OFF time can not be > 6600 seconds")
+         document.getElementById("offttimeid").focus()
+         return false;
+      }
+      var table = document.getElementById("ttable");
+      var lastrow = table.rows.length;
+      addtitem(f1,f2,f3,f4,lastrow-1);
+      document.getElementById("fromtempid").value=f2;
+      document.getElementById("totempid").value="";
+      document.getElementById("onttimeid").value="";
+      document.getElementById("offttimeid").value="";
+      document.getElementById("totempid").focus()
+}
+function deltemp(itmnum) {
+   dirty=1;
+   var j = itmnum.parentNode.parentNode.rowIndex;
+   document.getElementById("ttable").deleteRow(j);
+   j=j-1;
+   if (j > 0) {
+      document.getElementById("ttable").rows[j].cells[4].innerHTML = "<td align='center'>" +
+             "<input type='button' id='tdelete"+j+"' value='Delete'" +
+             "onClick='deltemp(this)'> </td>";
+      var celltext = document.getElementById("ttable").rows[j].cells[1].innerHTML
+      document.getElementById("fromtempid").value=celltext;
+   } else {
+      document.getElementById("fromtempid").value=0;
+   }
+}
+
+function checkToCenti() {
+     var table = document.getElementById("ttable");
+     var lastrow = table.rows.length;
+     var lasttemp = table.rows[lastrow-1].cells[1].innerHTML;
+     var totemp = parseInt(document.getElementById("totempid").value);
+     document.getElementById("totempid").value=totemp;
+     if (totemp <= lasttemp ) {
+        alert("To Centigrade must be > From Centigrade");
+        document.getElementById("totempid").focus()
+     }
+     if (totemp > 60 ) {
+        alert("To Centigrade can be maximum 60");
+        return false;
+     }
+}
+
+function addtitem(fc,tc,ot,ft,i) {
+      var table = document.getElementById("ttable");
+      var row = table.insertRow(-1)
+      var cell0 = row.insertCell(0);
+      var cell1 = row.insertCell(1);
+      var cell2 = row.insertCell(2);
+      var cell3 = row.insertCell(3);
+      var cell4 = row.insertCell(4);
+      cell0.innerHTML = "<td align='Left'>" + fc + "</td>";
+      cell1.innerHTML = "<td align='Left'>" + tc + "</td>";
+      cell2.innerHTML = "<td align='Left'>" + ot + "</td>";
+      cell3.innerHTML = "<td align='Left'>" + ft + "</td>";
+      if (i > 0) {
+         var j = i;
+         var prow = document.getElementById("ttable").rows[j].cells;
+         prow[4].innerHTML = "<td align='center'>" +
+             "<input type='button' disabled id='tdelete"+j+"' value='Delete'" +
+             "onClick='deltemp(this)'> </td>";
+      }
+      var j = i + 1
+      cell4.innerHTML = "<td align='center'>" +
+          "<input type='button' id='tdelete+j' value='Delete'" +
+          "onClick='deltemp(this)'> </td>";
+}
+
+function loadfile() {
+   if (dirty == 1) {
+      var r = confirm("Form Changed; Press OK to load another file or Press Cancel");
+      if (r == false) {
+         return false;
+      }
+   }
+   var file2load = document.getElementById("cfgname").value;
+   if (file2load == "") {
+      alert("can not load with empty filename");
+      return false;
+   }
+   setTimeout(function(){
+   getText("http://"+sysip+":/loadfile?file2load=" + file2load)
+   }, 4000)
+    async function getText(text) {
+       let text1 = await fetch(text);
+       let myText = await text1.text();
+       if (myText == "not found") {
+          alert(myText);
+          return ;
+       }
+       document.getElementById("savefileid").disabled=false;
+       document.getElementById("loadfileid").disabled=true;
+       var filerow=myText.split("!");
+       document.getElementById("noffpid").value=filerow[0];
+       document.getElementById("hoffpid").value=filerow[1];
+       var flds=filerow[2].split("|");
+       document.getElementById("fsonid").value=flds[0];
+       document.getElementById("fsoffid").value=flds[1];
+       var recs=filerow[3].split("|");
+
+       var table = document.getElementById("ttable"); 
+       var rows = table.rows;
+       var i = rows.length;
+       while (--i) {
+           if (i > 0) {
+              document.getElementById("ttable").deleteRow(i);
+           }
+       }
+       for (i=0; i<recs.length; i++) {
+           var row = table.insertRow(-1)
+           var cell0 = row.insertCell(0);
+           var cell1 = row.insertCell(1);
+           var cell2 = row.insertCell(2);
+           var cell3 = row.insertCell(3);
+           var cell4 = row.insertCell(4);
+           cell0.innerHTML = "<td align='Left'>" + recs[i].split(",")[0] + "</td>";
+           cell1.innerHTML = "<td align='Left'>" + recs[i].split(",")[1] + "</td>";
+           cell2.innerHTML = "<td align='Left'>" + recs[i].split(",")[2] + "</td>";
+           cell3.innerHTML = "<td align='Left'>" + recs[i].split(",")[3] + "</td>";
+           if (i > 0) {
+              var j = i;
+              var prow = document.getElementById("ttable").rows[j].cells;
+              prow[4].innerHTML = "<td align='center'>" + 
+               "<input type='button' disabled id='tdelete"+j+"' value='Delete' " +
+               "onClick='deltemp(this)' </td>";
+           }
+           j = i + 1
+           cell4.innerHTML = "<td align='center'>" + 
+           "<input type='button' id='tdelete+j' value='Delete' " +
+           "onClick='deltemp(this)' </td>";
+       }
+    }
+}
+
+</script>
+
+<style>
+p.small { line-height: 140%; }
+p.big   { line-height: 200%; }
+.slidecontainer {
+  width: 100%;
+}
+.slider {
+  -webkit-appearance: none;
+  width: 150px;
+  height: 20px;
+  background: #d3d3d3;
+  outline: none;
+  opacity: 0.9;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
+ul.tab {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #ccc;
+    background-color: #f1f1f1;
+}
+
+/* Float the list items side by side */
+ul.tab li {float: left;}
+
+/* Style the links inside the list items */
+ul.tab li a {
+    display: inline-block;
+    color: black;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+    transition: 0.3s;
+    font-size: 17px;
+}
+.tabcontent {
+    display: none;
+    padding: 6px 12px;
+    border: 1px solid #ccc;
+    border-top: none;
+}
+btable, th {
+   border: 2px solid black;
+}
+btable, td {
+   border: 1px solid black;
+}
+ul.tab li a:focus, .active {
+    background-color: #ccc;
+}
+div {
+  margin-bottom: 10px;
+}
+label {
+  display: inline-block;
+  width: 150px;
+}
+lab1 {
+  display: inline-block;
+  width: 200;
+  text-align: right;
+}
+</style>
+<body bgcolor="White">
+   <h1 align="center"><b1>Shetyes Farms</b1></h1>
+
+<ul class="tab">
+   <li><a href="#" class="tablinks active" onclick="insertitem(event, 'L') ">Login</a></li>
+   <li><a href="#" class="tablinks disabled" onclick="insertitem(event, 'M') ">WIFI Configuration</a></li>
+   <li><a href="#" class="tablinks disabled" onclick="insertitem(event, 'T') ">ThingSpeak Configuration</a></li>
+   <li><a href="#" class="tablinks disabled" onclick="insertitem(event, 'U') ">Upload File</a></li>
+   <li><a href="#" class="tablinks disabled" onclick="insertitem(event, 'C') ">Sprayer Configuration</a></li>
+   <li><a href="#" class="tablinks disabled" onclick="insertitem(event, 'S') ">Sensors & System</a></li>
+</ul>
+
+<div id="L" class="tabcontent" align="center" style=display:block>
+  <h3>Login Details</h3>
+  UserName <input name="uid" id="uidid" required type="text">
+  Password <input name="pwd" id="pwdid" required type="password"><br> <br>
+  <button type="button" id="lgnbut" onclick="sendlogin()">Login Farms</button> <br>
+  <p id="loginerr"></p>
+</div>
+
+<div id="S" class="tabcontent" align="center">
+  <h3>Current Sensors and System</h3>
+  <p align="center">
+  <lab1>Raindrop Sensor : </lab1><input name="ssrain" id="srain" type="text" readonly style="width: 50px"><br>
+  <lab1>Temperature : </lab1><input name="sstemp" id="stemp" type="text" readonly style="width: 50px"><br>
+  <lab1>Humidity: </lab1><input name="sshumid" id="shumid" type="text" readonly style="width: 50px"><br>
+  <lab1>Main Motor ON Time: </lab1><input name="sson" id="son" type="text" readonly style="width: 50px"><br>
+  <lab1>Main Motor OFF Time: </lab1><input name="ssoff" id="soff" type="text" readonly style="width: 50px"><br>
+  <lab1>FS ON Time: </lab1><input name="ssfson" id="sfson" type="text" readonly style="width: 50px"><br>
+  <lab1>FS OFF Time: </lab1><input name="ssfsoff" id="sfsoff" type="text" readonly style="width: 50px"><br>
+  <lab1>AirPump ON Time: </lab1><input name="sairon" id="aironid" type="text" readonly style="width: 50px"><br>
+  <lab1>AirPump OFF Time: </lab1><input name="sairoff" id="sairoffid" type="text" readonly style="width: 50px"><br>
+  <lab1>Day/Night: </lab1><input name="sdaynight" id="sdaynight" type="text" readonly style="width: 50px"><br>
+  <lab1>Nutrient Weight: </lab1><input name="snutweight" id="snutweightid" type="text" readonly style="width: 50px"><br>
+  <lab1>Nutrient Temperature: </lab1><input name="snuttemp" id="snuttempid" type="text" readonly style="width: 50px"><br>
+  <lab1>Nutrient pH: </lab1><input name="snutph" id="snutphid" type="text" readonly style="width: 50px"><br>
+  <lab1>Nutrient ppm: </lab1><input name="snutppm" id="snutppmid" type="text" readonly style="width: 50px"><br>
+  <lab1>Motion detected: </lab1><input name="smotdet" id="smotdetid" type="text" readonly style="width: 50px"><br><br>
+  <button type="button" id="sbut" onclick="sfunction()">Update Values</button></p>
+</div>
+
+<div id="U" class="tabcontent" align="center">
+  <h3>Upload a file to ESP8266</h3>
+  Select a file to upload<input name="fname" id="upname" type="file"><br>
+  <button type="button" id="upbut" onclick="uploadfile()">Upload File</button> <br>
+</div>
+
+<div id="M" class="tabcontent" align="center">
+<form name="classicw">
+  <h3>Change Wifi configuration</h3>
+  SSID <input name="sid" id="ssid" type="text">
+  WiFi Password <input name="wpwd" id="wpwdid" type="password" minlength="8" maxlength="15" size="12"><br> <br>
+  <h4>Here you can change your System Login details</h4>
+  System Login <input name="sys" id="syslgn" type="text">
+  System Password <input name="sysp" id="syspwd" type="password" size="12"<br><br>
+  Confirm Password <input name="sysp2" id="syspwd2" type="password" size="12"<br><br>
+  <button type="submit" id="ntwbut" onclick="netsave()">Save Network Conf.</button> <br>
+  <p id="wifierr"></p>
+</form>
+</div>
+
+<div id="T" class="tabcontent" align="center">
+<form name="classict">
+  <h3>ThingSpeak Configuration</h3>
+<br>
+  <button type="button" id="thnghelpid" onclick="thnghelp()">Help on ThingSpeak Cfg</button>
+  <button type="button" id="twihelpid" onclick="twihelp()">Help on Twilio Cfg</button><br><br>
+
+ThingSpeak User API Key <input name="thnguapi" id="thnguapiid" required
+      type="password"><br>
+Twilio SID <input name="twisid" id="twisidid" required><br>
+Twilio Auth Token <input name="twitkn" id="twitknid" required><br>
+ThingHTTP API Key <input name="thnghttp" id="thnghttpid" required
+      type="password"><br>
+  <button type="button" id="thngloadid" onclick="thngload()">Load ThingSpeak Record</button>
+  <button type="button" id="thngsaveid" onclick="thngsave()">Save ThingSpeak Record</button>
+  <p id="thngerr"></p>
+</form>
+</div>
+
+<div id="C" class="tabcontent" align="center">
+  <h3>Configuration Details</h3>
+<form name="classic" onsubmit="return validateform()" >
+<details>
+  <summary><h4 style="display:inline">Configuration File</h4><input list="configs" name="cfgname" class="form-control" id="cfgname" ><br>
+  <button type="button" id="loadfileid" onclick="loadfile()">Load File</button> 
+  <button type="button" id="savefileid" onclick="savefile()" disabled >Save File</button>
+  <button type="button" onclick="Restart()">Restart Controller</button><br>
+     <datalist id="configs">
+     <option value="NFTpump.cfg">NFTpump.cfg</option>
+     <option value="HydroponicTower.cfg">HydroponicTower.cfg</option>
+     <option value="EBBnFlow.cfg">EBBnFlow.cfg</option>
+     <option value="FoliarSpray.cfg">FoliarSpray.cfg</option>
+     <option value="Aeroponics.cfg">Aeroponics.cfg</option>
+     <option value="SafeAeroponics.cfg">SafeAeroponics.cfg</option>
+     <option value="CurrentSettings.cfg" selected>CurrentSettings.cfg</option>
+     </datalist>
+  </summary>
+<p>Configuration files are just for general guidance.  Please plan your motor ON/OFF schedule according to your crop needs, Nutrient Solution, type of Hydroponic Setup and Pump Capacity <br>
+Selected configuration file will be saved and used as CurrentSettings.cfg only <br><br></p>
+</details>
+
+<br>
+<div>
+  <label>Night Time OFF %</label> <input type="number" name="noffp" id="noffpid" onchange=checknoffp() style="width: 50px" >
+</div>
+
+<br>
+<details>
+<summary><label>Humidity effect % on OFF Time</label><input type="number" name="hoffp" id="hoffpid" onchange=checkhoffp() style="width: 50px" ></summary>
+<p>Enter temperature values for 50% humidity and then every 10% of humidity change will affect the value entered here.  e.g. this value is 25% and OFF time is 600 seconds for 50% humidity and if humidity increases to 60% then effective OFF time will become 600+150 seconds.</p>
+</details>
+
+<br> 
+Aeroponics FailSafe pump -- info -> <a target="_blank" href="failsafe.jpg">
+  <img src="failsafe.jpg" alt="Forest" style="width:50px">
+</a> <br>
+ON time in seconds <input type="number" name="fson" id="fsonid" style="width: 50px">
+OFF time in seconds <input type="number" name="fsoff" id="fsoffid" style="width: 50px"><br>
+
+Aeroponics air pump <br>
+ON time in seconds <input type="number" name="airon" id="aironid" style="width: 50px">
+OFF time in seconds <input type="number" name="airoff" id="airoffid" style="width: 50px"><br>
+
+<br><br>
+<details>
+<summary><h4 style="display:inline">Pump operating parameters</h4></summary>
+<p>ON and OFF times of temperature ranges assuming 50% humidity for main sprayer pump in aeroponics and foliar spray</p>
+</details>
+
+<fieldset name="temps" id="tempsid"><legend>Define Temperatures</legend>
+<div>
+  <label>From Centigrade</label> <input type="number" disabled name="fromtemp" id="fromtempid" style="width: 50px" >
+  <label>To Centrigrade</label> <input type="number" name="totemp" id="totempid" min="0" max="60" onchange=checkToCenti()>
+</div>
+<div>
+  <label>ON time(seconds)</label> <input type="number" name="onttime" id="onttimeid" style="width: 50px" >
+  <label>OFF time(seconds)</label> <input type="number" name="offttime" id="offttimeid" style="width: 50px" >
+</div>
+  <button type="button" onclick="addtemp()">Add Temperature</button> <br>
+</fieldset>
+<table id="ttable">
+  <tr>
+    <td>From Centigrade</td>
+    <td>To Centigrade</td>
+    <td>ON Time</td>
+    <td>OFF Time</td>
+    <td></td>
+  </tr>
+</table>
+
+</form>
+</div>
+</body>
+</html>
