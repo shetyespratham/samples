@@ -14,7 +14,7 @@ chnlid="1880625"
 data='[{"id":1880625,"name":"AeroSprayerIP","description":"","latitude":"0.0","longitude":"0.0","created_at":"2022-10-01T21:09:34Z","elevation":"","last_entry_id":null,"public_flag":false,"url":"","ranking":30,"metadata":"","license_id":0,"github_url":null,"tags":[],"api_keys":[{"api_key":"CW5R1A4AR4US2TXD","write_flag":true},{"api_key":"RYG6NDS17USB5E0M","write_flag":false}]},{"id":1880627,"name":"AeroSprayerRecords","description":"","latitude":"0.0","longitude":"0.0","created_at":"2022-10-01T21:24:20Z","elevation":"","last_entry_id":null,"public_flag":false,"url":"","ranking":30,"metadata":"","license_id":0,"github_url":null,"tags":[],"api_keys":[{"api_key":"L0XHLI5CA04DFV2Z","write_flag":true},{"api_key":"7K6YO0W0EMFONZBK","write_flag":false}]},{"id":1880652,"name":"AeroSprayerCurrentSensors","description":"","latitude":"0.0","longitude":"0.0","created_at":"2022-10-02T01:44:30Z","elevation":"","last_entry_id":null,"public_flag":false,"url":"","ranking":30,"metadata":"","license_id":0,"github_url":null,"tags":[],"api_keys":[{"api_key":"YG8OS4JYT1VYEXMA","write_flag":true},{"api_key":"R1JGCT8WEAZQ6SGR","write_flag":false}]}]'
 
 //getText("http://api.thingspeak.com/channels.json?api_key=A4GE7VHYHY5C6ZM7")
-text2="https://thingproxy.freeboard.io/fetch/https://api.thingspeak.com/channels.json?api_key=A4GE7VHYHY5C6ZM7"
+text2="https://thingproxy.freeboard.io/fetch/http://api.thingspeak.com/channels.json?api_key=A4GE7VHYHY5C6ZM7"
 /* getText(text2);
 
 async function getText(text) {
@@ -32,7 +32,7 @@ async function getText(text) {
 
 */
 
-text2="https://thingproxy.freeboard.io/fetch/api.thingspeak.com/channels/"+chnlid+"/feeds/last.json?api_key="+readkey
+text2="https://thingproxy.freeboard.io/fetch/http://api.thingspeak.com/channels/"+chnlid+"/feeds/last.json?api_key="+readkey
 getText(text2);
 async function getText(text2) {
    let text1 = await fetch(text2);
