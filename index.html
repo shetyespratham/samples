@@ -2,7 +2,7 @@
 <html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script type="text/javascript">
-var loggedin="yes";
+var loggedin="no";
 var savedyn="n";
 var dirty=0;
 var user="kailas";
@@ -12,23 +12,24 @@ uapikey=""
 readkey=""
 chnlid=""
 sysip=""
+createdat=""
 uapikey = prompt("Enter your ThingSpeak User API Key:");
 getText("http://api.thingspeak.com/channels.json?api_key="+uapikey);
    async function getText(text) {
       let text1 = await fetch(text);
       let myText = await text1.text();
-      alert(myText);
       const myArr = JSON.parse(myText);
-      if (sysip == "" || sysip == undefined) {
-         sysip = myArr.field1;
-      }
-      if ( sysip == undefined || sysip != "" ) {
+      if (!("field1" in myArr)) {
          for (i = 0; i < myArr.length; i++) {
              if ( myArr[i].name == "AeroSprayerIP" ) {
                   chnlid = myArr[i].id
                   readkey = myArr[i].api_keys[1].api_key 
              }
          }
+       } else {
+         sysip = myArr.field1;
+         createdat = myArr.created_at;
+         alert("your Aeroponics system was running on " + sysip + "\nlast started at " + createdat);
       }
    } 
 setTimeout(function(){
