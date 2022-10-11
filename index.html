@@ -13,7 +13,7 @@ readkey=""
 chnlid=""
 sysip=""
 uapikey = prompt("Enter your ThingSpeak User API Key:");
-getText("http://api.thingspeak.com/channels.json?api_key="+uapikey);
+getText("https://api.thingspeak.com/channels.json?api_key="+uapikey);
    async function getText(text) {
       let text1 = await fetch(text);
       let myText = await text1.text();
@@ -32,7 +32,7 @@ getText("http://api.thingspeak.com/channels.json?api_key="+uapikey);
       }
    } 
 setTimeout(function(){
-   getText("http://api.thingspeak.com/channels/"+chnlid+"/feeds/last.json?api_key="+readkey)
+   getText("https://api.thingspeak.com/channels/"+chnlid+"/feeds/last.json?api_key="+readkey)
 }, 2000)
 
 
