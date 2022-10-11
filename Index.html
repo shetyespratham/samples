@@ -9,40 +9,32 @@ var user="kailas";
 var pass="12345678";
 var myip="";
 uapikey=""
-//"F4GE7VHYHY5C6ZM7"
 readkey=""
-//"RYG6NDS17USB5E0M"
 chnlid=""
-"1880625"
-
+sysip=""
 uapikey = prompt("Enter your ThingSpeak User API Key:");
-text2="https://thingproxy.freeboard.io/fetch/http://api.thingspeak.com/channels.json?api_key="+uapikey
-getText(text2, { mode: 'no-cors' });
-async function getText(text) {
-   let text1 = await fetch(text);
-   let myText = await text1.text();
-   alert("Channels:"+myText)
-   const myArr = JSON.parse(myText);
-   for (i = 0; i < myArr.length; i++) {
-       if ( myArr[i].name == "AeroSprayerIP" ) {
-            chnlid = myArr[i].id
-            readkey = myArr[i].api_keys[1].api_key 
-       }
-   }
-   getText("http://api.thingspeak.com/channels/"+chnlid+"/feeds/last.json?api_key="+readkey, { mode: 'no-cors' })
+getText("http://api.thingspeak.com/channels.json?api_key="+uapikey);
    async function getText(text) {
       let text1 = await fetch(text);
       let myText = await text1.text();
+      alert(myText);
       const myArr = JSON.parse(myText);
-      sysip = myArr.field1
-      alert("IP:"+sysip)
-} 
-}
+      if (sysip == "" || sysip == undefined) {
+         sysip = myArr.field1;
+      }
+      if ( sysip == undefined || sysip != "" ) {
+         for (i = 0; i < myArr.length; i++) {
+             if ( myArr[i].name == "AeroSprayerIP" ) {
+                  chnlid = myArr[i].id
+                  readkey = myArr[i].api_keys[1].api_key 
+             }
+         }
+      }
+   } 
+setTimeout(function(){
+   getText("http://api.thingspeak.com/channels/"+chnlid+"/feeds/last.json?api_key="+readkey)
+}, 2000)
 
-if (myip == "") {
-   myip="192.168.29.10"
-   sysip="192.168.29.167"
-}
 
 function netsave() {
     var ssid = document.getElementById("ssid").value;
@@ -132,7 +124,7 @@ function sendlogin() {
           document.getElementById("lgnbut").disabled=true;
        } else {
                   alert("Please enter correct login details");
-               }
+       }
     }
 }
 
