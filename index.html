@@ -13,8 +13,9 @@ readkey=""
 chnlid=""
 sysip=""
 createdat=""
+// https://thingproxy.freeboard.io/fetch/
 uapikey = prompt("Enter your ThingSpeak User API Key:");
-getText("https://thingproxy.freeboard.io/fetch/http://api.thingspeak.com/channels.json?api_key="+uapikey);
+getText("http://api.thingspeak.com/channels.json?api_key="+uapikey);
    async function getText(text) {
       let text1 = await fetch(text);
       let myText = await text1.text();
@@ -33,7 +34,7 @@ getText("https://thingproxy.freeboard.io/fetch/http://api.thingspeak.com/channel
       }
    } 
 setTimeout(function(){
-   getText("https://thingproxy.freeboard.io/fetch/http://api.thingspeak.com/channels/"+chnlid+"/feeds/last.json?api_key="+readkey)
+   getText("https://api.thingspeak.com/channels/"+chnlid+"/feeds/last.json?api_key="+readkey)
 }, 2000)
 
 
