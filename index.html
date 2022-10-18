@@ -18,42 +18,11 @@ uapikey = prompt("Enter your ThingSpeak User API Key:");
 
 var requestOptions = {
   method: 'GET',
-  redirect: 'follow'
-};
-function GetReadKey(myText) {
-      const myArr = JSON.parse(myText);
-      for (i = 0; i < myArr.length; i++) {
-          if ( myArr[i].name == "AeroSprayerIP" ) {
-               chnlid = myArr[i].id
-               readkey = myArr[i].api_keys[1].api_key 
-          }
-      }
-}
-
-fetch("http://api.thingspeak.com/channels.json?api_key=F4GE7VHYHY5C6ZM7", requestOptions)
-  .then(response => response.text())
-  .then(result => GetReadKey(result))
-  .catch(error => console.log('error', error));
-
-function FillIpAddress(myText) {
-      const myArr = JSON.parse(myText);
-      sysip = myArr.field1;
-      createdat = myArr.created_at;
-      alert("your Aeroponics system was running on " + sysip + "\nlast started at " + createdat);
-}
-
-var requestOptions = {
-  method: 'GET',
+  mode: 'no-cors',
   redirect: 'follow'
 };
 
-fetch("http://api.thingspeak.com/channels/1880625/feeds/last.json?api_key=RYG6NDS17USB5E0M", requestOptions)
-  .then(response => response.text())
-  .then(result => FillIpAddress(result))
-  .catch(error => console.log('error', error));
-
-/*
-getText("http://api.thingspeak.com/channels.json?api_key="+uapikey);
+getText("http://api.thingspeak.com/channels.json?api_key="+uapikey, requestOptions)
    async function getText(text) {
       let text1 = await fetch(text);
       let myText = await text1.text();
@@ -72,11 +41,9 @@ getText("http://api.thingspeak.com/channels.json?api_key="+uapikey);
       }
    } 
 setTimeout(function(){
-   getText("http://api.thingspeak.com/channels/"+chnlid+"/feeds/last.json?api_key="+readkey)
-   http://api.thingspeak.com/channels/1880625/feeds/last.json?api_key=RYG6NDS17USB5E0M
-1880625,RYG6NDS17USB5E0M
+   getText("http://api.thingspeak.com/channels/"+chnlid+"/feeds/last.json?api_key="+readkey, requestOptions)
 }, 2000)
-*/
+
 
 function netsave() {
     var ssid = document.getElementById("ssid").value;
