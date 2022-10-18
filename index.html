@@ -13,8 +13,46 @@ readkey=""
 chnlid=""
 sysip=""
 createdat=""
-// https://thingproxy.freeboard.io/fetch/
 uapikey = prompt("Enter your ThingSpeak User API Key:");
+
+
+var requestOptions = {
+  method: 'GET',
+  redirect: 'follow'
+};
+function GetReadKey(myText) {
+      const myArr = JSON.parse(myText);
+      for (i = 0; i < myArr.length; i++) {
+          if ( myArr[i].name == "AeroSprayerIP" ) {
+               chnlid = myArr[i].id
+               readkey = myArr[i].api_keys[1].api_key 
+          }
+      }
+}
+
+fetch("http://api.thingspeak.com/channels.json?api_key=F4GE7VHYHY5C6ZM7", requestOptions)
+  .then(response => response.text())
+  .then(result => GetReadKey(result))
+  .catch(error => console.log('error', error));
+
+function FillIpAddress(myText) {
+      const myArr = JSON.parse(myText);
+      sysip = myArr.field1;
+      createdat = myArr.created_at;
+      alert("your Aeroponics system was running on " + sysip + "\nlast started at " + createdat);
+}
+
+var requestOptions = {
+  method: 'GET',
+  redirect: 'follow'
+};
+
+fetch("http://api.thingspeak.com/channels/1880625/feeds/last.json?api_key=RYG6NDS17USB5E0M", requestOptions)
+  .then(response => response.text())
+  .then(result => FillIpAddress(result))
+  .catch(error => console.log('error', error));
+
+/*
 getText("http://api.thingspeak.com/channels.json?api_key="+uapikey);
    async function getText(text) {
       let text1 = await fetch(text);
@@ -34,9 +72,11 @@ getText("http://api.thingspeak.com/channels.json?api_key="+uapikey);
       }
    } 
 setTimeout(function(){
-   getText("https://api.thingspeak.com/channels/"+chnlid+"/feeds/last.json?api_key="+readkey)
+   getText("http://api.thingspeak.com/channels/"+chnlid+"/feeds/last.json?api_key="+readkey)
+   http://api.thingspeak.com/channels/1880625/feeds/last.json?api_key=RYG6NDS17USB5E0M
+1880625,RYG6NDS17USB5E0M
 }, 2000)
-
+*/
 
 function netsave() {
     var ssid = document.getElementById("ssid").value;
@@ -114,7 +154,7 @@ function sfunction() {
           document.getElementById("soff").value=svalues[4];
           document.getElementById("sfson").value=svalues[5];
           document.getElementById("sfsoff").value=svalues[6];
-          document.getElementById("sairon").value=svalues[7];
+          document.getElementById("saironid").value=svalues[7];
           document.getElementById("sairoff").value=svalues[8];
           document.getElementById("sdaynight").value=svalues[9];
           document.getElementById("snutweight").value=svalues[10];
@@ -605,7 +645,7 @@ lab1 {
   <lab1>Main Motor OFF Time: </lab1><input name="ssoff" id="soff" type="text" readonly style="width: 50px"><br>
   <lab1>FS ON Time: </lab1><input name="ssfson" id="sfson" type="text" readonly style="width: 50px"><br>
   <lab1>FS OFF Time: </lab1><input name="ssfsoff" id="sfsoff" type="text" readonly style="width: 50px"><br>
-  <lab1>AirPump ON Time: </lab1><input name="sairon" id="aironid" type="text" readonly style="width: 50px"><br>
+  <lab1>AirPump ON Time: </lab1><input name="sairon" id="saironid" type="text" readonly style="width: 50px"><br>
   <lab1>AirPump OFF Time: </lab1><input name="sairoff" id="sairoffid" type="text" readonly style="width: 50px"><br>
   <lab1>Day/Night: </lab1><input name="sdaynight" id="sdaynight" type="text" readonly style="width: 50px"><br>
   <lab1>Nutrient Weight: </lab1><input name="snutweight" id="snutweightid" type="text" readonly style="width: 50px"><br>
