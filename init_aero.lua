@@ -42,20 +42,103 @@ solncpin=33
 touchpin=15
 padno=3
 
-open = file.open or io.open
-fh = open("Routers.mcu", "r")
-x=fh:read()
-fh:close()
-offsetAod=tonumber(x) -- 17418
-open = file.open or io.open
-fh = open("Calibrate.mcu", "r")
-x=fh:read()
-fh:close()
-calibrate=tonumber(x) -- -2.55
-weight=0
-isTare=1
 coefficient=-0.00004906289863605140
 
+function getsensors()
+   if file.exists("SystemSensors.mcu")
+      open = file.open or io.open
+      fh = open("Routers.mcu", "r")
+      filerec=fh:read()
+      fh:close()
+      tokens=split(filerec.."!", "!")
+      if tokens[1] == "true" then
+         rainp = "Y"
+      else
+         rainp = " "
+      end
+      if tokens[2] == "true" then
+         dhtp = "Y"
+      else
+         dhtp = " "
+      end
+      if tokens[3] == "true" then
+         mainp = "Y"
+      else
+         mainp = " "
+      end
+      if tokens[4] == "true" then
+         fsp = "Y"
+      else
+         fsp = " "
+      end
+      if tokens[5] == "true" then
+         airp = "Y"
+      else
+         airp = " "
+      end
+      if tokens[6] == "true" then
+         ldrp = "Y"
+      else
+         ldrp = " "
+      end
+      if tokens[7] == "true" then
+         hx711p = "Y"
+      else
+         hx711p = " "
+      end
+      if tokens[8] == "true" then
+         ds18b20p = "Y"
+      else
+         ds18b20p = " "
+      end
+      if tokens[9] == "true" then
+         nutphp = "Y"
+      else
+         nutphp = " "
+      end
+      if tokens[10] == "true" then
+         nutppmp = "Y"
+      else
+         nutppmp = " "
+      end
+      if tokens[11] == "true" then
+         motionp = "Y"
+      else
+         motionp = " "
+      end
+   else
+      rainp = " "
+      dhtp = " "
+      mainp = " "
+      fsp = " "
+      airp = " "
+      ldrp = " "
+      hx711p = " "
+      ds18b20p = " "
+      nutphp = " "
+      nutppmp = " "
+      motionp = " "
+   end
+end
+getsensors() 
+
+if file.exists("Calibrate.mcu") then
+   open = file.open or io.open
+   fh = open("Calibrate.mcu", "r")
+   x=fh:read()
+   fh:close()
+   calibrate=tonumber(x) -- -2.55
+end
+if file.exists("TareData.mcu") then
+   open = file.open or io.open
+   fh = open("TareData.mcu", "r")
+   x=fh:read()
+   fh:close()
+   offsetAod=tonumber(x)
+   isTare=1
+else
+   isTare=0
+end
 
 -- setup HX711 GPIO pins
 gpio.config( {gpio=hx711_clk, dir=gpio.OUT, pull=gpio.FLOATING}, {gpio=hx711_dat, dir=gpio.IN_OUT, pull=gpio.FLOATING })
@@ -77,12 +160,6 @@ gpio.trig(ldrpin, gpio.INTR_UP_DOWN, ldrcb)
 gpio.trig(motpin, gpio.INTR_UP, motcb)
 
 -- setup 
-
-macid=""
-if file.exists("macid.mcu") then
-   macid=read("macid.mcu","r",1)
-   macid=macid:gsub("[\n\r]", "")
-end
 
 read=function(fn,attr,no)
  local _line
@@ -182,13 +259,6 @@ function ThingSpeak()
       end
    end
 end
---function verifycert()
---    tls.createConnection()
---    file.open("client.pem")
---    filerec=file.read()
---    file.close()
---    tls.cert.verify(filerec)
---end
 function writemyip()
 --    http.delete("http://api.thingspeak.com/channels/"..ipchnlid.."/feeds.json?api_key="..usrapikey..","","",function(code, data)
 --       if (code < 0) then
@@ -342,16 +412,18 @@ function CreateChannel(chnlname, fldname)
 end
    
  
+if file.exists("Routers.mcu") then
+   rourecs=splitr(routers.."!", "!")
+end
 function Routers()
    aptimer:unregister()
    if file.exists("Routers.mcu") then
-      routers=read("Routers.mcu","r",1)
-      print(routers)
+      open = file.open or io.open
+      fh = open("Routers.mcu", "r")
+      routers=fh:read()
+      fh:close()
       routimer=tmr.create()
       wifi.setmode(wifi.STATION)
-      if macid ~= "" then
-         wifi.sta.setmac(macid)
-      end
       wifi.setphymode(wifi.PHYMODE_N)
       recs=split(routers.."!", "!")
       i=1
@@ -395,11 +467,7 @@ function ldrcb(level, pulse1, eventcnt)
    ldrdet=gpio.read(ldrpin)
 end
 
-if file.exists("TareData.mcu") then
-   filerec=read("TareData.mcu","r",1)
-   offsetAod=tonumber(filerec)
-   isTare=1
-end
+kailasshetye
 if file.exists("Credentials.mcu") then
    ussid=readline("Credentials.mcu","r",1)
    ussid=ussid:gsub("[\n\r]", "")

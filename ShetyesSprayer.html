@@ -5,6 +5,7 @@
 var loggedin="yes";
 var savedyn="n";
 var dirty=0;
+
 function netsave() {
     var ssid = document.getElementById("ssid").value;
     var wpass = document.getElementById("wpwdid").value;
@@ -95,6 +96,10 @@ function stare() {
     xhttp.send();
 };
 function sfunction() {
+    var x = document.getElementById("sonb")
+    x.value="new value"
+    x.style.display = "block"
+    return
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
        if (this.readyState == 4 && this.status == 200) {
@@ -156,7 +161,7 @@ function Restart() {
 }
 
 function insertitem(event, typetext) {
-    if (typetext == "S" || typetext == "R" || typetext == "C" || typetext == 'M' || typetext == 'U' || typetext == 'T') {
+    if (typetext == "S" || typetext == "R" || typetext == "C" || typetext == 'M' || typetext == 'U' || typetext == 'T' || typetext == "P") {
        if (loggedin != "yes") {
           alert("Please login before using the System");
           return;
@@ -254,6 +259,27 @@ function thngsave() {
 }
 
    
+function savesensors() {
+   filerow = document.getElementById("srainx").checked;
+   filerow = filerow + "!" + document.getElementById("sdhtx").value;
+   filerow = filerow + "!" + document.getElementById("smainx").value;
+   filerow = filerow + "!" + document.getElementById("sfsx").value;
+   filerow = filerow + "!" + document.getElementById("sairx").value;
+   filerow = filerow + "!" + document.getElementById("sldrx").value;
+   filerow = filerow + "!" + document.getElementById("shx711x").value;
+   filerow = filerow + "!" + document.getElementById("sds18b20x").value;
+   filerow = filerow + "!" + document.getElementById("sppmx").value;
+   filerow = filerow + "!" + document.getElementById("snutphx").value;
+   filerow = filerow + "!" + document.getElementById("smotionx").value;
+   var xhttp = new XMLHttpRequest();
+   xhttp.onreadystatechange = function() {
+      if (this.readyState == 4 && this.status == 200) {
+         alert(this.responseText); 
+      }
+   };
+   xhttp.open("GET", "savesensors?data=" + filerow, true)
+   xhttp.send();
+}
 function savefile() {
    var table = document.getElementById("ttable");
    var lastrow = table.rows.length;
@@ -673,7 +699,8 @@ lab2 {
    <li><a href="#" class="tablinks disabled" onclick="insertitem(event, 'T') ">ThingSpeak Configuration</a></li>
    <li><a href="#" class="tablinks disabled" onclick="insertitem(event, 'U') ">Upload File</a></li>
    <li><a href="#" class="tablinks disabled" onclick="insertitem(event, 'C') ">Sprayer Configuration</a></li>
-   <li><a href="#" class="tablinks disabled" onclick="insertitem(event, 'S') ">Sensors & System</a></li>
+   <li><a href="#" class="tablinks disabled" onclick="insertitem(event, 'S') ">Sensor readings & timings</a></li>
+   <li><a href="#" class="tablinks disabled" onclick="insertitem(event, 'P') ">Sensors Configuration</a></li>
 </ul>
 
 <div id="L" class="tabcontent" align="center" style=display:block>
@@ -684,24 +711,60 @@ lab2 {
   <p id="loginerr"></p>
 </div>
 
+
+<div id="P" class="tabcontent" align="center">
+  <h3>Current Sensors and System</h3>
+  <p align="left">
+
+  <input type="checkbox" id="srainx"> Raindrop Sensor <br>
+  <input type="checkbox" id="sdhtx"> DHT temperature and Humidity Sensor <br>
+  <input type="checkbox" id="smainx"> Main Sprayer motor <br>
+  <input type="checkbox" id="sfsx"> Failsafe motor <br>
+  <input type="checkbox" id="sairx"> Air Pump in nutrients <br>
+  <input type="checkbox" id="sldrx"> LDR for day / night <br>
+  <input type="checkbox" id="shx711x"> HX711 weighing scale for nutrients <br>
+  <input type="checkbox" id="sds18b20x"> DS18B20 temp sensor for nutrients <br>
+  <input type="checkbox" id="sppmx"> Analog TDS sensor <br>
+  <input type="checkbox" id="snutphx"> Analog PH sensor <br>
+  <input type="checkbox" id="smotionx"> Motion Detection sensor <br><br>
+  <button type="button" id="sensorbutid" onclick="savesensors()">Save Sensors</button> <br>
+</div>
+
 <div id="S" class="tabcontent" align="center">
   <h3>Current Sensors and System</h3>
-  <p align="center">
-  <lab1>Raindrop Sensor : </lab1><input name="ssrain" id="srain" type="text" readonly style="width: 50px"><br>
+  <p align="left">
+
+  <lab1>Raindrop Sensor : </lab1><lab3><input name="ssrain" id="srain" type="text" readonly style="width: 50px"></lab3><br>
+
   <lab1>Temperature : </lab1><input name="sstemp" id="stemp" type="text" readonly style="width: 50px"><br>
+
   <lab1>Humidity: </lab1><input name="sshumid" id="shumid" type="text" readonly style="width: 50px"><br>
-  <lab1>Main Motor ON Time: </lab1><input name="sson" id="son" type="text" readonly style="width: 50px"> Was ON before sonb H:M:S <br>
+
+  <lab1>Main Motor ON Time: </lab1><input name="sson" id="son" type="text" readonly style="width: 50px"> Was ON before 
+  <ins id="sonb" type=text readonly style="display:none; width: 70px"></ins> H:M:S <br>
+
   <lab1>Main Motor OFF Time: </lab1><input name="ssoff" id="soff" type="text" readonly style="width: 50px"> Was OFF before soffb  H:M:S<br>
+
   <lab1>FS ON Time: </lab1><input name="ssfson" id="sfson" type="text" readonly style="width: 50px"> Was ON before sfsonb H:M:S <br>
+
   <lab1>FS OFF Time: </lab1><input name="ssfsoff" id="sfsoff" type="text" readonly style="width: 50px"> Was OFF before sfsoffb H:M:S <br>
-  <lab1>AirPump ON Time: </lab1><input name="sairon" id="aironid" type="text" readonly style="width: 50px"> Was ON before aironidb H:M:S <br>
+
+  <lab1>AirPump ON Time: </lab1><input name="sairon" id="saironid" type="text" readonly style="width: 50px"> Was ON before aironidb H:M:S <br>
+
   <lab1>AirPump OFF Time: </lab1><input name="sairoff" id="sairoffid" type="text" readonly style="width: 50px"> Was off before airoffid H:M:S <br>
+
   <lab1>Day/Night: </lab1><input name="sdaynight" id="sdaynight" type="text" readonly style="width: 50px"><br>
+
   <lab1>Nutrient Weight: </lab1><input name="snutweight" id="snutweightid" type="text" readonly style="width: 50px"><br>
+
   <lab1>Nutrient Temperature: </lab1><input name="snuttemp" id="snuttempid" type="text" readonly style="width: 50px"><br>
+
   <lab1>Nutrient pH: </lab1><input name="snutph" id="snutphid" type="text" readonly style="width: 50px"><br>
+
   <lab1>Nutrient ppm: </lab1><input name="snutppm" id="snutppmid" type="text" readonly style="width: 50px"><br>
+
   <lab1>Motion detected: </lab1><input name="smotdet" id="smotdetid" type="text" readonly style="width: 50px"> Was detected before smotdetidb H:M:S <br><br>
+
   <button type="button" id="sbut" onclick="sfunction()">Update Values</button>
   <button type="button" id="sbutt" onclick="stare()">Tare Nutrient Scale</button>
   <button type="button" id="sbutt1" onclick="calibrate()">Set Calibration Value</button><input name="calib" id="calibid" type="text"  style="width: 50px"></p>
