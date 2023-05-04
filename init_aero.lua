@@ -44,10 +44,72 @@ padno=3
 
 coefficient=-0.00004906289863605140
 
+nightoff=0
+humidoff=0
+fson=0
+fsoff=0
+airon=0
+airoff=0
+currtemp=0
+currhumid=0
+curron=0
+curroff=0
+motdet=0
+ldrdet=0
+mottim=0
+daynight=0
+nutcap=0
+
+-- touchpad configuration at GPIO15
+m = {}
+m.pad = {padno}
+m._tp = nil
+m._padState = 0
+m._tmr = nil
+m._tmrWait = 50
+touchstart = 0
+touchend = 0
+touchms = 0
+lastuntouch = 0
+
+ussid="ShetyesAero"
+userpwd="12345678"
+syslgn="kailas"
+syspwd="shetye"
+cfg={}
+cfg.ssid=ussid
+cfg.pwd=userpwd
+cfg.auth=AUTH_WPA2_PSK
+cfg.hidden=0
+cfg.max=4
+cfgip={}
+cfg.ip="192.168.101.1"
+cfg.netmask="255.255.255.0"
+cfg.gateway="192.168.101.1"
+cfg.dns="8.8.8.8"
+cfgdh={}
+cfgdh.start="192.168.101.2"
+station_cfg={}
+station_cfg.auto=true
+station_cfg.save=true
+connected="N"
+myip=nil
+
+-- functions
+
+wifi.sta.on("got_ip", function(ev, info)
+    myip = info.ip
+    connected="Y"
+end)
+wifi.sta.on("disconnected", function(ev, info)
+    myip = nil
+    connected="N"
+end)
+
 function getsensors()
    if file.exists("SystemSensors.mcu")
       open = file.open or io.open
-      fh = open("Routers.mcu", "r")
+      fh = open("SystemSensors.mcu", "r")
       filerec=fh:read()
       fh:close()
       tokens=split(filerec.."!", "!")
@@ -120,47 +182,6 @@ function getsensors()
       motionp = " "
    end
 end
-getsensors() 
-
-if file.exists("Calibrate.mcu") then
-   open = file.open or io.open
-   fh = open("Calibrate.mcu", "r")
-   x=fh:read()
-   fh:close()
-   calibrate=tonumber(x) -- -2.55
-end
-if file.exists("TareData.mcu") then
-   open = file.open or io.open
-   fh = open("TareData.mcu", "r")
-   x=fh:read()
-   fh:close()
-   offsetAod=tonumber(x)
-   isTare=1
-else
-   isTare=0
-end
-
--- setup HX711 GPIO pins
-gpio.config( {gpio=hx711_clk, dir=gpio.OUT, pull=gpio.FLOATING}, {gpio=hx711_dat, dir=gpio.IN_OUT, pull=gpio.FLOATING })
--- HX711 pin setup done
-
--- setup DHT22 GPIO PIN
--- no need to setup
--- end DHT22 setup
-
--- setup main, failsafe and airpump pins
-gpio.config( {gpio={mainpin,fspin,airpin}, dir=gpio.OUT, pull=gpio.PULL_UP })
-
--- setup ds18b20 temp sensor
-ow.setup(dspin)
-
--- setup rainpin, ldrpin, dspin, motpin
-gpio.config({gpio={rainpin,ldrpin,motpin}, dir=gpio.IN, pull=gpio.PULL_UP })
-gpio.trig(ldrpin, gpio.INTR_UP_DOWN, ldrcb)
-gpio.trig(motpin, gpio.INTR_UP, motcb)
-
--- setup 
-
 read=function(fn,attr,no)
  local _line
  local open = file.open or io.open
@@ -245,7 +266,10 @@ end
 
 function ThingSpeak()
    if file.exists("ThingSpeak.mcu") then
-      filerec=read("ThingSpeak.mcu","r",1)
+      open = file.open or io.open
+      fh = open("ThingSpeak.mcu", "r")
+      filerec=fh:read()
+      fh:close()
       tokens=split(filerec.."!", "!")
       usrapikey=tokens[1]
       twisid=tokens[2]
@@ -294,9 +318,12 @@ function writestartrecord()
    end)
 end
 function sendSMS(SMSText)
-    http.post("https://api.thingspeak.com/apps/thinghttp/send_request?api_key="..thttpk.."&message="..SMSText,
-        "Content-Type: application/x-www-form-urlencoded\r\n",
-        "",
+headers = {
+  ["Content-Type"] = "application/x-www-urlencoded\r\n",
+}
+body = '{""}'
+http.post("https://api.thingspeak.com/apps/thinghttp/send_request?api_key="..thttpk.."&message="..SMSText,
+        {headers = headers}, body,
         function(code,data)
         if (code < 0) then
            print("Send SMS Failed")
@@ -410,11 +437,6 @@ function CreateChannel(chnlname, fldname)
       end
    end)
 end
-   
- 
-if file.exists("Routers.mcu") then
-   rourecs=splitr(routers.."!", "!")
-end
 function Routers()
    aptimer:unregister()
    if file.exists("Routers.mcu") then
@@ -439,7 +461,7 @@ function Routers()
                 i=#recs
                 print("Connected to router using "..flds[1])
                 ThingSpeak()
-                dofile("aeroponics.lc")
+                dofile("aeroponics.lua")
             end)
             if (i < #recs) then
                i=i+1;
@@ -448,17 +470,19 @@ function Routers()
          end
       end)
       routimer:start()
+   else
+      dofile("aeroponics.lua")
    end
 end
 
-ussid="ShetyesAero"
-userpwd="12345678"
-syslgn="kailas"
-syspwd="shetye"
 function motcb()
 -- value becomes 1 after motions
    gpio.trig(motpin, gpio.INTR_DISABLE)
    motdet=1
+   motdetbal=0
+   if daynight == 1 then
+      sendSMS("Motion%20detected%20in%20night%20time%20before%20"..mottim.."%20minutes)
+   end
 end
 
 function ldrcb(level, pulse1, eventcnt)
@@ -467,149 +491,26 @@ function ldrcb(level, pulse1, eventcnt)
    ldrdet=gpio.read(ldrpin)
 end
 
-kailasshetye
-if file.exists("Credentials.mcu") then
-   ussid=readline("Credentials.mcu","r",1)
-   ussid=ussid:gsub("[\n\r]", "")
-   if ussid == "" then
-      ussid="ShetyesAero"
-   end
-   userpwd=readline("Credentials.mcu","r",2)
-   userpwd=userpwd:gsub("[\n\r]", "")
-   if userpwd == "" then
-      userpwd="12345678"
-   end
-   syslgn=readline("Credentials.mcu","r",3)
-   syslgn=syslgn:gsub("[\n\r]", "")
-   if syslgn == "" then
-      syslgn="kailas"
-   end
-   syspwd=readline("Credentials.mcu","r",4)
-   syspwd=syspwd:gsub("[\n\r]", "")
-   if syspwd == "" then
-      syspwd="shetye"
-   end
-end
-wifi.setmode(wifi.SOFTAP)
-wifi.setphymode(wifi.PHYMODE_N)
-cfg={}
-cfg.ssid=ussid
-cfg.pwd=userpwd
-cfg.auth=AUTH_WPA2_PSK
-cfg.hidden=0
-cfg.max=4
-cfgip={}
-cfg.ip="192.168.101.1"
-cfg.netmask="255.255.255.0"
-cfg.gateway="192.168.101.1"
-cfg.dns="8.8.8.8"
-cfgdh={}
-cfgdh.start="192.168.101.2"
-station_cfg={}
-station_cfg.auto=true
-station_cfg.save=true
-
-ussid="ShetyesAero"
-userpwd="12345678"
-connected="N"
-myip=nil
-
-wifi.sta.on("got_ip", function(ev, info)
-    myip = info.ip
-    connected="Y"
-end)
-wifi.sta.on("disconnected", function(ev, info)
-    myip = nil
-    connected="N"
-end)
-
-kailasshetye - move from here
-wifi.sta.scan({ hidden = 1 }, function(err,arr)
-  if err then
-    print ("Scan failed:", err)
-  else
-    for i,ap in ipairs(arr) do
-      print(ap.ssid.."kvs")
-    end
-    print("-- Total APs: ", #arr)
-  end
-end)
-kailasshetye - move upto here
-
--- Run the main file
-nightoff=0
-humidoff=0
-fson=0
-fsoff=0
-airon=0
-airoff=0
-currtemp=0
-currhumid=0
-curron=0
-curroff=0
-motdet=0
-ldrdet=0
-mottim=0
-daynight=0
-nutcap=0
-if file.exists("CurrentSettings.cfg") then
-   filerec=read("CurrentSettings.cfg","r",1)
-   recs=split(filerec.."!", "!")
---   rainthre=tonumber(recs[1])
-   nightoff=tonumber(recs[1])
-   humidoff=tonumber(recs[2])
-   flds=split(recs[3].."|", "|")
-   fson=tonumber(flds[1])
-   fsoff=tonumber(flds[2])
-   flds=split(recs[4].."|", "|")
-   airon=tonumber(flds[1])
-   airoff=tonumber(flds[2])
-   nutcap=tonumber(recs[5])
-
-   tempfrom={};
-   tempto={};
-   tempon={};
-   tempoff={};
-   temps=split(recs[5].."|","|")
-   for i=1, #temps do
-      flds=split(temps[i]..",", ",")
-      tempfrom[i]=tonumber(flds[1])
-      tempto[i]=tonumber(flds[2])
-      tempon[i]=tonumber(flds[3])
-      tempoff[i]=tonumber(flds[4])
-   end
-end
-stats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
-if stats ~= dht.OK then
+function dht_read()
    stats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
-end
-if stats ~= dht.OK then
-   stats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
-end
-if stats == dht.OK then
-   for i=1, #temps do
-       if currtemp >= tempfrom[i] and currtemp < tempto[i] then
-          curron=tempon[i]
-          curroff=tempoff[i]
-       end
+   if stats ~= dht.OK then
+      stats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
    end
-else
-   curron=3
-   curroff=600
+   if stats ~= dht.OK then
+      stats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
+   end
+   if stats == dht.OK then
+      for i=1, #temps do
+          if currtemp >= tempfrom[i] and currtemp < tempto[i] then
+             curron=tempon[i]
+             curroff=tempoff[i]
+          end
+      end
+   else
+      curron=3
+      curroff=600
+   end
 end
-
-
--- touchpad configuration at GPIO15
-m = {}
-m.pad = {padno}
-m._tp = nil
-m._padState = 0
-m._tmr = nil
-m._tmrWait = 50
-touchstart = 0
-touchend = 0
-touchms = 0
-lastuntouch = 0
 
 function m.onTouch(pads)
    if m._padState == 0 then
@@ -661,11 +562,119 @@ function m.config()
    print("will trigger at thres: ", thres)
    m._tp:intrEnable()
 end
+
+-- actual execution
+getsensors() 
+
+if file.exists("Calibrate.mcu") then
+   open = file.open or io.open
+   fh = open("Calibrate.mcu", "r")
+   x=fh:read()
+   fh:close()
+   calibrate=tonumber(x) -- -2.55
+end
+if file.exists("TareData.mcu") then
+   open = file.open or io.open
+   fh = open("TareData.mcu", "r")
+   x=fh:read()
+   fh:close()
+   offsetAod=tonumber(x)
+   isTare=1
+else
+   isTare=0
+end
+
+-- setup HX711 GPIO pins
+gpio.config( {gpio=hx711_clk, dir=gpio.OUT, pull=gpio.FLOATING}, {gpio=hx711_dat, dir=gpio.IN_OUT, pull=gpio.FLOATING })
+-- HX711 pin setup done
+
+-- setup DHT22 GPIO PIN
+-- no need to setup
+-- end DHT22 setup
+
+-- setup main, failsafe and airpump pins
+gpio.config( {gpio={mainpin,fspin,airpin}, dir=gpio.OUT, pull=gpio.PULL_UP })
+
+-- setup ds18b20 temp sensor
+ow.setup(dspin)
+
+-- setup rainpin, ldrpin, dspin, motpin
+gpio.config({gpio={rainpin,ldrpin,motpin}, dir=gpio.IN, pull=gpio.PULL_UP })
+gpio.trig(ldrpin, gpio.INTR_UP_DOWN, ldrcb)
+gpio.trig(motpin, gpio.INTR_UP, motcb)
+
+-- setup 
+
+ 
+
+
+if file.exists("Credentials.mcu") then
+   open = file.open or io.open
+   fh = open("Credentials.mcu", "r")
+   ussid=fh:read()
+   -- ussid=ussid:gsub("[\n\r]", "")
+   if ussid == "" then
+      ussid="ShetyesAero"
+   end
+   userpwd=fh:read()
+   -- userpwd=userpwd:gsub("[\n\r]", "")
+   if userpwd == "" then
+      userpwd="12345678"
+   end
+   syslgn=fh:read()
+   -- syslgn=syslgn:gsub("[\n\r]", "")
+   if syslgn == "" then
+      syslgn="kailas"
+   end
+   syspwd=fh:read()
+   -- syspwd=syspwd:gsub("[\n\r]", "")
+   if syspwd == "" then
+      syspwd="shetye"
+   end
+   fh:close()
+end
+
+wifi.setmode(wifi.SOFTAP)
+wifi.setphymode(wifi.PHYMODE_N)
+
+-- Run the main file
+if file.exists("CurrentSettings.cfg") then
+   open = file.open or io.open
+   fh = open("CurrentSettings.cfg", "r")
+   filerec=fh:read()
+   fh:close()
+   recs=split(filerec.."!", "!")
+--   rainthre=tonumber(recs[1])
+   nightoff=tonumber(recs[1])
+   humidoff=tonumber(recs[2])
+   flds=split(recs[3].."|", "|")
+   fson=tonumber(flds[1])
+   fsoff=tonumber(flds[2])
+   flds=split(recs[4].."|", "|")
+   airon=tonumber(flds[1])
+   airoff=tonumber(flds[2])
+   nutcap=tonumber(recs[5])
+
+   tempfrom={};
+   tempto={};
+   tempon={};
+   tempoff={};
+   temps=split(recs[5].."|","|")
+   for i=1, #temps do
+      flds=split(temps[i]..",", ",")
+      tempfrom[i]=tonumber(flds[1])
+      tempto[i]=tonumber(flds[2])
+      tempon[i]=tonumber(flds[3])
+      tempoff[i]=tonumber(flds[4])
+   end
+end
+
 m.init()
 
 aptctr=0
 aptimer=tmr.create()
 aptimer:register(5000, tmr.ALARM_SEMI, function()
+       print("Inside AP Timer")
        localTime = time.getlocal()
        lowbits = node.uptime()
        hours = math.floor(lowbits/1000000/60/60)
@@ -683,11 +692,14 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
        if ccnt > 0 then
           node.setcpufreq(160)
           print("Starting web server")
-          dofile("SprayWorld.lc")
+          dofile("SprayWorld.lua")
        end
        if (aptctr > 6) then
           aptctr=0
-          Routers()
+          if file.exists("SystemSensors.mcu") and
+             file.exists("CurrentSettings.cfg") then
+                Routers()
+          end
        else
           aptimer:start()
        end

@@ -59,7 +59,6 @@ function tostringhms(a)
    return (tostring(hours)..":"..tostring(mins)..":"..tostring(secs))
 end  
 
-ssidlist=""
 function wifi_scan()
    ssidlist=""
    wifi.sta.scan({ hidden = 1 }, function(err,arr)
