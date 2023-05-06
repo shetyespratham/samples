@@ -14,6 +14,10 @@ usrapikey=""
 twisid=""
 twitkn=""
 thttpk=""
+twytpn=""
+twypn=""
+twtwn=""
+twywn=""
 
 -- GPIO6-11  spi flash
 -- GPIO20,24,28-31  not available
@@ -55,7 +59,6 @@ currhumid=0
 curron=0
 curroff=0
 motdet=0
-ldrdet=0
 mottim=0
 daynight=0
 nutcap=0
@@ -93,6 +96,7 @@ station_cfg={}
 station_cfg.auto=true
 station_cfg.save=true
 connected="N"
+cli_connected="N"
 myip=nil
 
 -- functions
@@ -105,9 +109,15 @@ wifi.sta.on("disconnected", function(ev, info)
     myip = nil
     connected="N"
 end)
+wifi.ap.on("sta_connected", function(ev, info)
+    cli_connected="Y"
+end)
+wifi.ap.on("sta_disconnected", function(ev, info)
+    cli_connected="N"
+end)
 
 function getsensors()
-   if file.exists("SystemSensors.mcu")
+   if file.exists("SystemSensors.mcu") then
       open = file.open or io.open
       fh = open("SystemSensors.mcu", "r")
       filerec=fh:read()
@@ -121,7 +131,7 @@ function getsensors()
       if tokens[2] == "true" then
          dhtp = "Y"
       else
-         dhtp = " "
+         dhtp = "Y"
       end
       if tokens[3] == "true" then
          mainp = "Y"
@@ -170,7 +180,7 @@ function getsensors()
       end
    else
       rainp = " "
-      dhtp = " "
+      dhtp = "Y"
       mainp = " "
       fsp = " "
       airp = " "
@@ -275,6 +285,10 @@ function ThingSpeak()
       twisid=tokens[2]
       twitkn=tokens[3]
       thttpk=tokens[4]
+      twytpn=tokens[5]
+      twypn=tokens[6]
+      twtwn=tokens[7]
+      twywn=tokens[8]
       -- verifycert()
       GetChannels()
       if chnlspresent == "Y" then
@@ -318,20 +332,42 @@ function writestartrecord()
    end)
 end
 function sendSMS(SMSText)
-headers = {
-  ["Content-Type"] = "application/x-www-urlencoded\r\n",
-}
-body = '{""}'
-http.post("https://api.thingspeak.com/apps/thinghttp/send_request?api_key="..thttpk.."&message="..SMSText,
-        {headers = headers}, body,
-        function(code,data)
-        if (code < 0) then
-           print("Send SMS Failed")
-        else
-           print(code, data)
-           print("SMS sent"..SMSText)
-        end
-    end)
+   twytpn1 = string.sub(twytpn,2)
+   twypn1 = string.sub(twypn, 2)
+   headers = {
+     ["Content-Type"] = "application/x-www-form-urlencoded\r\n",
+     ["Authorization"] = "Basic "..encoded
+   }
+   body = "To=%2B"..twypn1.."&From=%2B"..twytpn1.."&Body="..SMSText
+   http.post("https://api.twilio.com/2010-04-01/Accounts/"..twisid.."/Messages.json",
+           {headers = headers}, body,
+           function(code,data)
+           if (code < 0) then
+              print("Send SMS Failed")
+           else
+              print(code, data)
+              print("SMS sent")
+           end
+       end)
+end
+function sendWhatsApp(SMSText)
+   twtwn1 = string.sub(twtwn, 2)
+   twywn1 = string.sub(twywn, 2)
+   headers = {
+     ["Content-Type"] = "application/x-www-form-urlencoded\r\n",
+     ["Authorization"] = "Basic "..encoded
+   }
+   body = "To=whatsapp%3A%2B"..twywn1.."&From=whatsapp%3A%2B"..twtwn1.."&Body="..SMSText
+   http.post("https://api.twilio.com/2010-04-01/Accounts/"..twisid.."/Messages.json",
+           {headers = headers}, body,
+           function(code,data)
+           if (code < 0) then
+              print("Send SMS Failed")
+           else
+              print(code, data)
+              print("SMS sent")
+           end
+       end)
 end
 function GetChannels()
     http.get("http://api.thingspeak.com/channels.json?api_key="..usrapikey,  function(code, data)
@@ -439,17 +475,19 @@ function CreateChannel(chnlname, fldname)
 end
 function Routers()
    aptimer:unregister()
+   print("aptimer unregistered")
    if file.exists("Routers.mcu") then
       open = file.open or io.open
       fh = open("Routers.mcu", "r")
       routers=fh:read()
       fh:close()
       routimer=tmr.create()
-      wifi.setmode(wifi.STATION)
-      wifi.setphymode(wifi.PHYMODE_N)
+      wifi.mode(wifi.STATION)
+--    wifi.setphymode(wifi.PHYMODE_N)
       recs=split(routers.."!", "!")
       i=1
       routimer:register(10000, tmr.ALARM_SEMI, function()
+         print("inside routimer")
          if (connected == "N") then
             flds=split(recs[i].."|", "|")
             station_cfg.ssid=flds[1]
@@ -481,14 +519,14 @@ function motcb()
    motdet=1
    motdetbal=0
    if daynight == 1 then
-      sendSMS("Motion%20detected%20in%20night%20time%20before%20"..mottim.."%20minutes)
+      sendSMS("Motion%20detected%20in%20night%20time%20before%20"..mottim.."%20minutes")
    end
 end
 
 function ldrcb(level, pulse1, eventcnt)
 -- value becomes 1 after light goes dark
    gpio.trig(ldrpin, gpio.INTR_DISABLE)
-   ldrdet=gpio.read(ldrpin)
+   daynight=gpio.read(ldrpin)
 end
 
 function dht_read()
@@ -516,7 +554,7 @@ function m.onTouch(pads)
    if m._padState == 0 then
       m._padState = 1
       m._tmr:start()
-      touchstart = math.floor(node.uptime()/1000))
+      touchstart = math.floor(node.uptime()/1000)
       lastuntouch = touchstart - touchend
       print("Touch - untouched for millis: ", lastuntouch)
       local raw = m._tp:read()
@@ -530,7 +568,7 @@ function m.onTouch(pads)
    end
 end
 function m.onTmr()
-  touchend = math.floor(node.uptime()/1000))
+  touchend = math.floor(node.uptime()/1000)
   touchms = touchend - touchstart
   m._padState = 0
   print("Untouch - touched for millis: ", touchms)
@@ -634,8 +672,8 @@ if file.exists("Credentials.mcu") then
    fh:close()
 end
 
-wifi.setmode(wifi.SOFTAP)
-wifi.setphymode(wifi.PHYMODE_N)
+wifi.mode(wifi.SOFTAP)
+-- wifi.setphymode(wifi.PHYMODE_N)
 
 -- Run the main file
 if file.exists("CurrentSettings.cfg") then
@@ -680,17 +718,12 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
        hours = math.floor(lowbits/1000000/60/60)
        mins = math.floor((lowbits - (hours * 1000000*60*60)) /1000000/60)
        secs = math.floor((lowbits - ((hours * 1000000*60*60) + (mins * 1000000 * 60)))/1000000)
-       print(string.format("%04d-%02d-%02d %02d:%02d:%02d DST:%d", localTime["year"], localTime["mon"], localTime["day"], localTime["hour"], localTime["min"], localTime["sec"], localTime["dst"]))
-       print(string.format("%02d:%02d:%02d", hours, mins, secs))
+--     print(string.format("%04d-%02d-%02d %02d:%02d:%02d DST:%d", localTime["year"], localTime["mon"], localTime["day"], localTime["hour"], localTime["min"], localTime["sec"], localTime["dst"]))
+--     print(string.format("%02d:%02d:%02d", hours, mins, secs))
 
        aptctr = aptctr + 1
-       table=wifi.ap.getclient()
-       ccnt = 0
-       for mac,ip in pairs(table) do
-           ccnt = ccnt + 1
-       end
-       if ccnt > 0 then
-          node.setcpufreq(160)
+       if cli_connected == "Y" then
+--        node.setcpufreq(160)
           print("Starting web server")
           dofile("SprayWorld.lua")
        end
@@ -700,12 +733,14 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
              file.exists("CurrentSettings.cfg") then
                 Routers()
           end
-       else
           aptimer:start()
+--     else
+--        aptimer:start()
        end
 end)
 tptimer=tmr.create()
 tptimer:register(15000, tmr.ALARM_SINGLE, function()
+        print("inside tptimer")
         wifi.start()
         wifi.mode(wifi.STATIONAP)
         wifi.ap.config(cfg)

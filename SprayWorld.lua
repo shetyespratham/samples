@@ -136,7 +136,7 @@ srv:listen(80,function(conn)
         end
         if string.find(payload, "GET \/areyouthere") then
            print("Request received through router:"..payload)
-           if myip
+           if myip then
               conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..myip)
            else
               conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n")
@@ -230,7 +230,7 @@ srv:listen(80,function(conn)
            fndt=split(payload)
            open = file.open or io.open
            fh = open("ThingSpeak.mcu", "w")
-           fh:write(fndt.thnguapi.."!"..fndt.twisid.."!"..fndt.twitkn.."!"..fndt.thnghttp)
+           fh:write(fndt.thnguapi.."!"..fndt.twisid.."!"..fndt.twitkn.."!"..fndt.thnghttp.."!"..fndt.twytpn.."!"..fndt.twypn.."!"..fndt.twtwn.."!"..fndt.twywn)
            fh:flush()
            fh:close()
            conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")

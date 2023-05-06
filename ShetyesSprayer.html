@@ -2,7 +2,7 @@
 <html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script type="text/javascript">
-var loggedin="yes";
+var loggedin="no";
 var savedyn="n";
 var dirty=0;
 
@@ -227,10 +227,14 @@ function thngload() {
             return ;
          }
          var filerow=this.responseText.split("!");
-         var x1 = document.getElementById("thnguapiid").value=filerow[0];
-         var x2 = document.getElementById("twisidid").value=filerow[1];
-         var x3 = document.getElementById("twitknid").value=filerow[2];
-         var x4 = document.getElementById("thnghttpid").value=filerow[3];
+         document.getElementById("thnguapiid").value=filerow[0];
+         document.getElementById("twisidid").value=filerow[1];
+         document.getElementById("twitknid").value=filerow[2];
+         document.getElementById("thnghttpid").value=filerow[3];
+         document.getElementById("twytpnid").value=filerow[4];
+         document.getElementById("twypnid").value=filerow[5];
+         document.getElementById("twtwnid").value=filerow[6];
+         document.getElementById("twywnid").value=filerow[7];
       }
    };
    xhttp.open("GET", "/thngload", true)
@@ -241,6 +245,10 @@ function thngsave() {
    var x2 = document.getElementById("twisidid").value;
    var x3 = document.getElementById("twitknid").value;
    var x4 = document.getElementById("thnghttpid").value;
+   var x5 = document.getElementById("twytpnid").value;
+   var x6 = document.getElementById("twypnid").value;
+   var x7 = document.getElementById("twtwnid").value;
+   var x8 = document.getElementById("twywnid").value;
    if (x1 == "" || x2 == "" || x3 == "" || x4 == "") {
       alert("SID, KEY or Token can not be empty");
       return false;
@@ -254,7 +262,11 @@ function thngsave() {
    xhttp.open("GET", "thngsave?thnguapi=" + x1 +
                              "&twisid=" + x2 +
                              "&twitkn=" + x3 +
-                             "&thnghttp=" + x4, true)
+                             "&thnghttp=" + x4 +
+                             "&twytpn=" + x5 +
+                             "&twypn=" + x6 +
+                             "&twtwn=" + x7 +
+                             "&twywn=" + x8, true)
    xhttp.send();
 }
 
@@ -717,7 +729,7 @@ lab2 {
   <p align="left">
 
   <input type="checkbox" id="srainx"> Raindrop Sensor <br>
-  <input type="checkbox" id="sdhtx"> DHT temperature and Humidity Sensor <br>
+  <input type="checkbox" id="sdhtx" disabled="true" checked="true"> DHT temperature and Humidity Sensor <br>
   <input type="checkbox" id="smainx"> Main Sprayer motor <br>
   <input type="checkbox" id="sfsx"> Failsafe motor <br>
   <input type="checkbox" id="sairx"> Air Pump in nutrients <br>
@@ -816,6 +828,10 @@ Twilio SID <input name="twisid" id="twisidid" required><br>
 Twilio Auth Token <input name="twitkn" id="twitknid" required><br>
 ThingHTTP API Key <input name="thnghttp" id="thnghttpid" required
       type="password"><br>
+Your Twilio Phone Number (+1...) <input name="twytpn" id="twytpnid" required><br>
+Your Phone Number (+91...) <input name="twypn" id="twypnid" required><br>
+Twilio Whatsapp Number (+1...) <input name="twtwn" id="twtwnid" required><br>
+Your Whatsapp Number (+91...) <input name="twywn" id="twywnid" required><br>
   <button type="button" id="thngloadid" onclick="thngload()">load ThingSpeak Record</button>
   <button type="button" id="thngsaveid" onclick="thngsave()">Save ThingSpeak Record</button>
   <p id="thngerr"></p>
