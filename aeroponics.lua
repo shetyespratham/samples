@@ -1,5 +1,5 @@
 print("inside aeroponics.lua")
-routimer:unregister()
+--routimer:unregister()
 print("router timer unregistered")
 mainstat=1
 mainonbal=0
@@ -12,7 +12,12 @@ aironbal=0
 airoffbal=10000
 
 onofftimer = tmr.create()
-onofftimer:register((1000), tmr.ALARM_AUTO, function()
+onofftimer:register(1000, tmr.ALARM_AUTO, function()
+   print("doing aeroponics")
+   if end_router == "Y" then
+      print("routimer unregistered")
+      routimer:unregister();
+   end
    motdetbal = motdetbal + 1
    if mainstat == 1 and mainonbal == 0 then
       dht_read()
@@ -55,12 +60,12 @@ onofftimer:register((1000), tmr.ALARM_AUTO, function()
       if fsstat == 1 and fsonbal == 0 then
          fsoffbal = fsoff
          gpio.write(fspin, gpio.LOW) -- put ON the main motor
-         fsstat == 0
+         fsstat = 0
       end
       if fsstat == 0 and fsoffbal == 0 then
          fsonbal = fson
          gpio.write(fspin, gpio.LOW) -- put ON the main motor
-         fsstat == 1
+         fsstat = 1
       end
    end
 
@@ -68,12 +73,12 @@ onofftimer:register((1000), tmr.ALARM_AUTO, function()
       if airstat == 1 and aironbal == 0 then
          airoffbal = airoff
          gpio.write(airpin, gpio.LOW) -- put ON the main motor
-         airstat == 0
+         airstat = 0
       end
       if airstat == 0 and aironbal == 0 then
          aironbal = airon
          gpio.write(airpin, gpio.HIGH) -- put ON the main motor
-         airstat == 1
+         airstat = 1
       end
    end
 
@@ -137,7 +142,7 @@ onofftimer:register((1000), tmr.ALARM_AUTO, function()
    if airstat == 0 and airoffbal > 0 then
       airoffbal = airoffbal - 1
    end
-
-print("Starting web server on router")
-dofile("SprayWorld.lc")
-
+end)
+-- print("Starting web server on router")
+-- dofile("SprayWorld.lc")
+onofftimer:start();

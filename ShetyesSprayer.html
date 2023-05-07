@@ -273,16 +273,16 @@ function thngsave() {
    
 function savesensors() {
    filerow = document.getElementById("srainx").checked;
-   filerow = filerow + "!" + document.getElementById("sdhtx").value;
-   filerow = filerow + "!" + document.getElementById("smainx").value;
-   filerow = filerow + "!" + document.getElementById("sfsx").value;
-   filerow = filerow + "!" + document.getElementById("sairx").value;
-   filerow = filerow + "!" + document.getElementById("sldrx").value;
-   filerow = filerow + "!" + document.getElementById("shx711x").value;
-   filerow = filerow + "!" + document.getElementById("sds18b20x").value;
-   filerow = filerow + "!" + document.getElementById("sppmx").value;
-   filerow = filerow + "!" + document.getElementById("snutphx").value;
-   filerow = filerow + "!" + document.getElementById("smotionx").value;
+   filerow = filerow + "!" + document.getElementById("sdhtx").checked;
+   filerow = filerow + "!" + document.getElementById("smainx").checked;
+   filerow = filerow + "!" + document.getElementById("sfsx").checked;
+   filerow = filerow + "!" + document.getElementById("sairx").checked;
+   filerow = filerow + "!" + document.getElementById("sldrx").checked;
+   filerow = filerow + "!" + document.getElementById("shx711x").checked;
+   filerow = filerow + "!" + document.getElementById("sds18b20x").checked;
+   filerow = filerow + "!" + document.getElementById("sppmx").checked;
+   filerow = filerow + "!" + document.getElementById("snutphx").checked;
+   filerow = filerow + "!" + document.getElementById("smotionx").checked;
    var xhttp = new XMLHttpRequest();
    xhttp.onreadystatechange = function() {
       if (this.readyState == 4 && this.status == 200) {
@@ -321,11 +321,12 @@ function savefile() {
       return false;
    }
    var file2save = document.getElementById("cfgname").value;
-//   var filerow = document.getElementById("raindid").value;
    filerow = document.getElementById("noffpid").value;
    filerow = filerow + "!" + document.getElementById("hoffpid").value;
    filerow = filerow + "!" + document.getElementById("fsonid").value;
-   filerow = filerow + "|" + document.getElementById("fsoffid").value;
+   filerow = filerow + "!" + document.getElementById("fsoffid").value;
+   filerow = filerow + "!" + document.getElementById("aironid").value;
+   filerow = filerow + "!" + document.getElementById("airoffid").value;
    filerow = filerow + "!";
    for (var i=1; i < table.rows.length; i++) {
        filerow = filerow + table.rows[i].cells[0].innerHTML;
@@ -842,7 +843,7 @@ Your Whatsapp Number (+91...) <input name="twywn" id="twywnid" required><br>
   <h3>Configuration Details</h3>
 <form name="classic" onsubmit="return validateform()" >
 <details>
-  <summary><h4 style="display:inline">Configuration File</h4><input list="configs" name="cfgname" class="form-control" id="cfgname" onchange="loadcfgfilenames()"><br>
+  <summary><h4 style="display:inline">Configuration File</h4><input list="configs" name="cfgnamen" class="form-control" id="cfgname" onchange="loadcfgfilenames()"><br>
   <button type="button" id="loadfileid" onclick="loadfile()">Load File</button> 
   <button type="button" id="savefileid" onclick="savefile()" disabled >Save File</button>
   <button type="button" onclick="Restart()">Restart Controller</button><br>

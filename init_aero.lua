@@ -110,9 +110,11 @@ wifi.sta.on("disconnected", function(ev, info)
     connected="N"
 end)
 wifi.ap.on("sta_connected", function(ev, info)
+    print("Client connected ")
     cli_connected="Y"
 end)
 wifi.ap.on("sta_disconnected", function(ev, info)
+    print("Client disconnected ")
     cli_connected="N"
 end)
 
@@ -122,7 +124,8 @@ function getsensors()
       fh = open("SystemSensors.mcu", "r")
       filerec=fh:read()
       fh:close()
-      tokens=split(filerec.."!", "!")
+      print(filerec.."!")
+      tokens=splitr(filerec.."!", "!")
       if tokens[1] == "true" then
          rainp = "Y"
       else
@@ -208,7 +211,7 @@ read=function(fn,attr,no)
  return _line
 end
 
-function split(s, delm)
+function splitr(s, delm)
    result = {};
    for k in s:gmatch("(.-)"..delm) do
        result[#result+1] = k
@@ -280,7 +283,7 @@ function ThingSpeak()
       fh = open("ThingSpeak.mcu", "r")
       filerec=fh:read()
       fh:close()
-      tokens=split(filerec.."!", "!")
+      tokens=splitr(filerec.."!", "!")
       usrapikey=tokens[1]
       twisid=tokens[2]
       twitkn=tokens[3]
@@ -473,46 +476,59 @@ function CreateChannel(chnlname, fldname)
       end
    end)
 end
+end_router = "N"
+rourecs={}
+ri=1
 function Routers()
-   aptimer:unregister()
-   print("aptimer unregistered")
+-- aptimer:unregister()
+-- print("aptimer unregistered")
+   if aero_started == "N" then
+      aero_started = "Y"
+      dofile("aeroponics.lua")
+   end
    if file.exists("Routers.mcu") then
       open = file.open or io.open
       fh = open("Routers.mcu", "r")
       routers=fh:read()
       fh:close()
       routimer=tmr.create()
-      wifi.mode(wifi.STATION)
+--    wifi.mode(wifi.STATION)
 --    wifi.setphymode(wifi.PHYMODE_N)
-      recs=split(routers.."!", "!")
-      i=1
+      rourecs=splitr(routers.."!", "!")
+--    print("rourecs[1]="..rourecs[1])
+      ri=1
       routimer:register(10000, tmr.ALARM_SEMI, function()
-         print("inside routimer")
+--       print("inside routimer")
+         if ri > #rourecs then
+            ri = 1
+         end
          if (connected == "N") then
-            flds=split(recs[i].."|", "|")
-            station_cfg.ssid=flds[1]
-            station_cfg.pwd=flds[2]
+--          print("ri in routimer="..ri)
+--          print("rourecs in routimer="..rourecs[ri])
+            rouflds=splitr(rourecs[ri].."|", "|")
+            station_cfg.ssid=rouflds[1]
+            station_cfg.pwd=rouflds[2]
             wifi.sta.config(station_cfg)
-            wifi.sta.connect()
+--          wifi.sta.connect()
             wifi.sta.connect(function(T)
                 connected="Y"
-                i=#recs
-                print("Connected to router using "..flds[1])
-                ThingSpeak()
-                dofile("aeroponics.lua")
+                ri=#rourecs
+                print("Connected to router using "..rouflds[1])
+--              ThingSpeak()
             end)
-            if (i < #recs) then
-               i=i+1;
+            if (ri <= #rourecs) then
+               ri=ri+1;
                routimer:start();
+            else
+               end_router = "Y"
             end
          end
       end)
       routimer:start()
-   else
-      dofile("aeroponics.lua")
    end
 end
 
+motdetbal=0
 function motcb()
 -- value becomes 1 after motions
    gpio.trig(motpin, gpio.INTR_DISABLE)
@@ -672,34 +688,31 @@ if file.exists("Credentials.mcu") then
    fh:close()
 end
 
-wifi.mode(wifi.SOFTAP)
+-- wifi.mode(wifi.SOFTAP)
 -- wifi.setphymode(wifi.PHYMODE_N)
 
 -- Run the main file
+-- 50!30!300|1800!0,25,3,600|25,30,5,600|30,35,6,360|35,40,7,300|40,45,8,240|45,50,10,180|50,60,20,120
 if file.exists("CurrentSettings.cfg") then
    open = file.open or io.open
    fh = open("CurrentSettings.cfg", "r")
    filerec=fh:read()
    fh:close()
-   recs=split(filerec.."!", "!")
---   rainthre=tonumber(recs[1])
-   nightoff=tonumber(recs[1])
-   humidoff=tonumber(recs[2])
-   flds=split(recs[3].."|", "|")
-   fson=tonumber(flds[1])
-   fsoff=tonumber(flds[2])
-   flds=split(recs[4].."|", "|")
-   airon=tonumber(flds[1])
-   airoff=tonumber(flds[2])
-   nutcap=tonumber(recs[5])
+   recs=splitr(filerec.."!", "!")
+   nightoff=tonumber(recs[1])  -- 50
+   humidoff=tonumber(recs[2])  -- 30
+   fson=tonumber(recs[3]) -- 300
+   fsoff=tonumber(recs[4]) -- 1800
+   airon=tonumber(recs[5]) -- 1800
+   airoff=tonumber(recs[6]) -- 600
 
    tempfrom={};
    tempto={};
    tempon={};
    tempoff={};
-   temps=split(recs[5].."|","|")
-   for i=1, #temps do
-      flds=split(temps[i]..",", ",")
+   temprecs=splitr(recs[7].."|","|")
+   for i=1, #temprecs do
+      flds=splitr(temprecs[i]..",", ",")
       tempfrom[i]=tonumber(flds[1])
       tempto[i]=tonumber(flds[2])
       tempon[i]=tonumber(flds[3])
@@ -710,6 +723,9 @@ end
 m.init()
 
 aptctr=0
+rou_started="N"
+web_started="N"
+aero_started="N"
 aptimer=tmr.create()
 aptimer:register(5000, tmr.ALARM_SEMI, function()
        print("Inside AP Timer")
@@ -721,22 +737,36 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
 --     print(string.format("%04d-%02d-%02d %02d:%02d:%02d DST:%d", localTime["year"], localTime["mon"], localTime["day"], localTime["hour"], localTime["min"], localTime["sec"], localTime["dst"]))
 --     print(string.format("%02d:%02d:%02d", hours, mins, secs))
 
+-- print("Going for Routers start")
+-- print("cli_connected="..cli_connected)
+-- if file.exists("SystemSensors.mcu") then
+--    print("SystemSensors.mcu exists")
+-- else
+--    print("SystemSensors.mcu DOES NOT exist")
+-- end
+-- if file.exists("CurrentSettings.cfg") then
+--    print("CurrentSettings.cfg exists")
+-- else
+--    print("CurrentSettings.cfg DOES NOT exist")
+-- end
+-- print("rou_started="..rou_started)
+
        aptctr = aptctr + 1
-       if cli_connected == "Y" then
+       if cli_connected == "N" and
+          rou_started == "N" and
+          file.exists("SystemSensors.mcu") and
+          file.exists("CurrentSettings.cfg") then
+             rou_started = "Y"
+             Routers()
+       end
+       if cli_connected == "Y" and
+          web_started == "N" then
 --        node.setcpufreq(160)
+          web_started = "Y"
           print("Starting web server")
           dofile("SprayWorld.lua")
        end
-       if (aptctr > 6) then
-          aptctr=0
-          if file.exists("SystemSensors.mcu") and
-             file.exists("CurrentSettings.cfg") then
-                Routers()
-          end
-          aptimer:start()
---     else
---        aptimer:start()
-       end
+       aptimer:start()
 end)
 tptimer=tmr.create()
 tptimer:register(15000, tmr.ALARM_SINGLE, function()

@@ -1,6 +1,6 @@
 
- -- Start a simple http server
-aptimer:unregister()
+-- Start a simple http server
+-- aptimer:unregister()
 loggedin="no"
 sendingidx=0
 function split(s)
@@ -11,18 +11,18 @@ function split(s)
    end
    return result;
 end
-function splitr(s, delm)
-   result = {};
-   for k in s:gmatch("(.-)"..delm) do
-       result[#result+1] = k
-   end
-   return result;
-end
+--function splitr(s, delm)
+--   result = {};
+--   for k in s:gmatch("(.-)"..delm) do
+--       result[#result+1] = k
+--   end
+--   return result;
+--end
 function nextChunk(c, filetype)
     open = file.open or io.open    
     f = open(f2opn, "r")
     f:seek("set", i)
-    abcd = f:read(256)
+    abcd = f:read(1024)
     if not abcd then
        c:close()
        sendingidx=0
@@ -45,7 +45,7 @@ function nextChunk(c, filetype)
     else
        c:send(abcd)
     end
-    i = i + 256
+    i = i + 1024
     f:close()
     collectgarbage()
 end
@@ -58,7 +58,7 @@ function tostringhms(a)
    print(tostring(hours)..":"..(mins)..":"..(secs))
    return (tostring(hours)..":"..tostring(mins)..":"..tostring(secs))
 end  
-
+ssidlist1=""
 function wifi_scan()
    ssidlist=""
    wifi.sta.scan({ hidden = 1 }, function(err,arr)
@@ -75,8 +75,8 @@ function wifi_scan()
              end
          end
          print("-- Total APs: ", #arr)
+         ssidlist1=ssidlist
        end
-       conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..ssidlist)
    end)
 end
 
@@ -91,13 +91,13 @@ srv:listen(80,function(conn)
         f2opn = "ShetyesSprayer.html.gz"
         nextChunk(conn, "gz")
      end
-     if string.find(payload, "GET \/Pratham.jpg") then
-        print("KVS Payload \/Pratham.jpg:"..payload)
-        i=0
-        sendingidx=1
-        f2opn = "Pratham.jpg"
-        nextChunk(conn, "jpg")
-     end
+--     if string.find(payload, "GET \/Pratham.jpg") then
+--        print("KVS Payload \/Pratham.jpg:"..payload)
+--        i=0
+--        sendingidx=1
+--        f2opn = "Pratham.jpg"
+--        nextChunk(conn, "jpg")
+--     end
      if string.find(payload, "GET \/failsafe.jpg") then
         print("KVS Payload \/failsafe.jpg:"..payload)
         i=0
@@ -105,13 +105,13 @@ srv:listen(80,function(conn)
         f2opn = "failsafe.jpg"
         nextChunk(conn, "jpg")
      end
-     if string.find(payload, "GET \/favicon.ico") then
-        print("KVS Payload \/favicon.ico:"..payload)
-        i=0
-        sendingidx=1
-        f2opn = "favicon.ico"
-        nextChunk(conn, "ico")
-     end
+--     if string.find(payload, "GET \/favicon.ico") then
+--        print("KVS Payload \/favicon.ico:"..payload)
+--        i=0
+--        sendingidx=1
+--        f2opn = "favicon.ico"
+--        nextChunk(conn, "ico")
+--     end
      if string.find(payload, "GET \/chkcred") then
           print(payload)
           fndt=split(payload)
@@ -127,8 +127,13 @@ srv:listen(80,function(conn)
      end
      if loggedin == "yes" then
         if string.find(payload,"GET \/getssidlist") then
-         print("going for scan")
-         wifi_scan()
+           print("going for scan")
+           wifi_scan()
+           if ssidlist1 ~= nil then
+              conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..ssidlist1)
+           else
+              conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n")
+           end
         end     
         if string.find(payload,"GET \/restart") then
            srv:close()
@@ -206,7 +211,7 @@ srv:listen(80,function(conn)
            print("savefile Request received:"..payload)
            fndt=split(payload)
            open = file.open or io.open
-           fh = open(fndt.file2save, "w")
+           fh = open(fndt.save2file, "w")
            fh:write(fndt.data)
            fh:flush()
            fh:close()
