@@ -96,10 +96,10 @@ function stare() {
     xhttp.send();
 };
 function sfunction() {
-    var x = document.getElementById("sonb")
-    x.value="new value"
-    x.style.display = "block"
-    return
+//  var x = document.getElementById("sonb")
+//  x.value="new value"
+//  x.style.display = "block"
+//  return
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
        if (this.readyState == 4 && this.status == 200) {
@@ -109,17 +109,24 @@ function sfunction() {
           document.getElementById("stemp").value=svalues[1];
           document.getElementById("shumid").value=svalues[2];
           document.getElementById("son").value=svalues[3];
-          document.getElementById("soff").value=svalues[4];
-          document.getElementById("sfson").value=svalues[5];
-          document.getElementById("sfsoff").value=svalues[6];
-          document.getElementById("sairon").value=svalues[7];
-          document.getElementById("sairoff").value=svalues[8];
-          document.getElementById("sdaynight").value=svalues[9];
-          document.getElementById("snutweight").value=svalues[10];
-          document.getElementById("snuttemp").value=svalues[11];
-          document.getElementById("snutph").value=svalues[12];
-          document.getElementById("snutppm").value=svalues[13];
-          document.getElementById("smotdet").value=svalues[14];
+          document.getElementById("mainonbal").value=svalues[4];
+          document.getElementById("soff").value=svalues[5];
+          document.getElementById("mainoffbal").value=svalues[6];
+          document.getElementById("sfson").value=svalues[7];
+          document.getElementById("fsonbal").value=svalues[8];
+          document.getElementById("sfsoff").value=svalues[9];
+          document.getElementById("fsoffbal").value=svalues[10];
+          document.getElementById("sairon").value=svalues[11];
+          document.getElementById("aironbal").value=svalues[12];
+          document.getElementById("sairoff").value=svalues[13];
+          document.getElementById("airoffbal").value=svalues[14];
+          document.getElementById("sdaynight").value=svalues[15];
+          document.getElementById("snutweight").value=svalues[16];
+          document.getElementById("snuttemp").value=svalues[17];
+          document.getElementById("snutph").value=svalues[18];
+          document.getElementById("snutppm").value=svalues[19];
+          document.getElementById("smotdet").value=svalues[20];
+          document.getElementById("smotdetbal").value=svalues[21];
        }
     }
     xhttp.open("GET", "/sfunction", true)
@@ -580,10 +587,11 @@ function loadfile() {
 //         document.getElementById("raindid").value=filerow[0];
          document.getElementById("noffpid").value=filerow[0];
          document.getElementById("hoffpid").value=filerow[1];
-         var flds=filerow[2].split("|");
-         document.getElementById("fsonid").value=flds[0];
-         document.getElementById("fsoffid").value=flds[1];
-         var recs=filerow[3].split("|");
+         document.getElementById("fsonid").value=filerow[2];
+         document.getElementById("fsoffid").value=filerow[3];
+         document.getElementById("aironid").value=filerow[4];
+         document.getElementById("airoffid").value=filerow[5];
+         var recs=filerow[6].split("|");
 
          var table = document.getElementById("ttable"); 
          var rows = table.rows;
@@ -753,30 +761,29 @@ lab2 {
 
   <lab1>Humidity: </lab1><input name="sshumid" id="shumid" type="text" readonly style="width: 50px"><br>
 
-  <lab1>Main Motor ON Time: </lab1><input name="sson" id="son" type="text" readonly style="width: 50px"> Was ON before 
-  <ins id="sonb" type=text readonly style="display:none; width: 70px"></ins> H:M:S <br>
+  <lab1>Main Motor ON Time: </lab1><input name="sson" id="son" type="text" readonly style="width: 50px"> Was ON before <input id="mainonbal" readonly style=width: 50px"> H:M:S<br>
 
-  <lab1>Main Motor OFF Time: </lab1><input name="ssoff" id="soff" type="text" readonly style="width: 50px"> Was OFF before soffb  H:M:S<br>
+  <lab1>Main Motor OFF Time: </lab1><input name="ssoff" id="soff" type="text" readonly style="width: 50px"> Was OFF before <input id="mainoffbal" readonly style=width: 50px"> H:M:S<br>
 
-  <lab1>FS ON Time: </lab1><input name="ssfson" id="sfson" type="text" readonly style="width: 50px"> Was ON before sfsonb H:M:S <br>
+  <lab1>FS ON Time: </lab1><input name="ssfson" id="sfson" type="text" readonly style="width: 50px"> Was ON before <input id="fsonbal" readonly style=width: 50px"> H:M:S<br>
 
-  <lab1>FS OFF Time: </lab1><input name="ssfsoff" id="sfsoff" type="text" readonly style="width: 50px"> Was OFF before sfsoffb H:M:S <br>
+  <lab1>FS OFF Time: </lab1><input name="ssfsoff" id="sfsoff" type="text" readonly style="width: 50px"> Was OFF before <input id="fsoffbal" readonly style=width: 50px"> H:M:S<br>
 
-  <lab1>AirPump ON Time: </lab1><input name="sairon" id="saironid" type="text" readonly style="width: 50px"> Was ON before aironidb H:M:S <br>
+  <lab1>AirPump ON Time: </lab1><input name="ssairon" id="sairon" type="text" readonly style="width: 50px"> Was ON before <input id="aironbal" readonly style=width: 50px"> H:M:S<br>
 
-  <lab1>AirPump OFF Time: </lab1><input name="sairoff" id="sairoffid" type="text" readonly style="width: 50px"> Was off before airoffid H:M:S <br>
+  <lab1>AirPump OFF Time: </lab1><input name="ssairoff" id="sairoff" type="text" readonly style="width: 50px"> Was off before <input id="airoffbal" readonly style=width: 50px"> H:M:S<br>
 
-  <lab1>Day/Night: </lab1><input name="sdaynight" id="sdaynight" type="text" readonly style="width: 50px"><br>
+  <lab1>Day/Night: </lab1><input name="ssdaynight" id="sdaynight" type="text" readonly style="width: 50px"><br>
 
-  <lab1>Nutrient Weight: </lab1><input name="snutweight" id="snutweightid" type="text" readonly style="width: 50px"><br>
+  <lab1>Nutrient Weight: </lab1><input name="ssnutweight" id="snutweight" type="text" readonly style="width: 50px"><br>
 
-  <lab1>Nutrient Temperature: </lab1><input name="snuttemp" id="snuttempid" type="text" readonly style="width: 50px"><br>
+  <lab1>Nutrient Temperature: </lab1><input name="ssnuttemp" id="snuttemp" type="text" readonly style="width: 50px"><br>
 
-  <lab1>Nutrient pH: </lab1><input name="snutph" id="snutphid" type="text" readonly style="width: 50px"><br>
+  <lab1>Nutrient pH: </lab1><input name="ssnutph" id="snutph" type="text" readonly style="width: 50px"><br>
 
-  <lab1>Nutrient ppm: </lab1><input name="snutppm" id="snutppmid" type="text" readonly style="width: 50px"><br>
+  <lab1>Nutrient ppm: </lab1><input name="ssnutppm" id="snutppm" type="text" readonly style="width: 50px"><br>
 
-  <lab1>Motion detected: </lab1><input name="smotdet" id="smotdetid" type="text" readonly style="width: 50px"> Was detected before smotdetidb H:M:S <br><br>
+  <lab1>Motion detected: </lab1><input name="ssmotdet" id="smotdet" type="text" readonly style="width: 50px"> Was detected before <input id="motdetbal" readonly style=width: 50px"> H:M:S<br>
 
   <button type="button" id="sbut" onclick="sfunction()">Update Values</button>
   <button type="button" id="sbutt" onclick="stare()">Tare Nutrient Scale</button>

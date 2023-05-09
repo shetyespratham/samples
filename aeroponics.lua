@@ -1,15 +1,14 @@
 print("inside aeroponics.lua")
 --routimer:unregister()
-print("router timer unregistered")
-mainstat=1
+mainstat=0
 mainonbal=0
-mainoffbal=10000
-fsstat=1
+mainoffbal=curroff
+fsstat=0
 fsonbal=0
-fsoffbal=10000
-airstat=1
+fsoffbal=fsoff
+airstat=0
 aironbal=0
-airoffbal=10000
+airoffbal=airoff
 
 onofftimer = tmr.create()
 onofftimer:register(1000, tmr.ALARM_AUTO, function()
@@ -18,130 +17,92 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
       print("routimer unregistered")
       routimer:unregister();
    end
+   if motdetbal > 300 then
+      motsent = 0
+      gpio.trig(motpin, gpio.INTR_ENABLE)
+   end
    motdetbal = motdetbal + 1
-   if mainstat == 1 and mainonbal == 0 then
+   mainonbal = mainonbal + 1
+   mainoffbal = mainoffbal + 1
+   fsonbal = fsonbal + 1
+   fsoffbal = fsoffbal + 1
+   aironbal = aironbal + 1
+   airoffbal = airoffbal + 1
+   if mainoffbal >= curroff and mainstat == 0 then
+      mainonbal = 0
+      mainoffbal = 0
       dht_read()
-      if stats == dht.OK then
-         for i=1, #temps do
-             if currtemp >= tempfrom[i] and currtemp < tempto[i] then
-                curron=tempon[i]
-                curroff=tempoff[i]
-                if stats == dht.OK then
-                   if currhumid > 50 then
-                      curroff = curroff * ((currhumid-50) / 1000 * humidoff)
-                   else
-                      curroff = curroff / ((50-currhumid) / 1000 * humidoff)
-                   end
-                end
-             end
-         end
-      else
-         if connected == "Y" and file.exists("ThingSpeak.mcu") then
-            sendSMS("Humidity%20and%20Temperature%20Sensor%20did%20not%20read%20data")
-         end
-         print("Temperature and Humidity Sensor failed")
-         curron=3
-         curroff=600
-      end
-      if daynight == 1 then
-         curroff = curroff + (curroff * nightoff / 100)
+      if ds18b20p == "Y" then
+         t:read_temp(readout, dspin, t.C)
       end
       mainoffbal = curroff
-      mainstat = 0
-      gpio.write(mainpin, gpio.LOW) -- put ON the main motor
-   end
-   if mainstat == 0 and mainoffbal == 0 then
-      mainonbal = curron
       mainstat = 1
-      gpio.write(mainpin, gpio.HIGH) -- put OFF the main motor
+      gpio.write(mainpin, 0) -- put ON the main motor
+   end
+   if mainonbal >= curron and mainstat == 1 then
+      mainoffbal = 0
+      mainonbal = 0
+      mainstat = 0
+      gpio.write(mainpin, 1) -- put OFF the main motor
+      if rainp == "Y" then
+         if (gpio.read(rainpin)) == 0 then
+            if rainsent == 0 then
+               sendSMS("Raindrop%20Sensor%20did%20not%20get%20water%20from%20Fogger")
+               rainsent = 1
+            end
+         end
+         if hx711p == "Y" then
+            if isTare ~= 0 then
+               weight=getAverageWeight(10)
+               if weight < 2 then
+                  if hxsent == 0 then
+                     sendSMS("Nutrient%20is%20remaining%20only%20"..string.format("%0.3f",weight).."%20litres")
+                     hxsent = 1
+                  end
+               end
+            end
+         end
+         if ds18b20p == "Y" then
+            if nuttemp > 28 and connected == "Y" then
+               if nuttsent == 0 then
+                  sendSMS("Nutrient%20temperature%20has%20increased%20to%20"..nuttemp)
+                  nuttsent = 1
+               end
+            end
+         end
+      end
    end
 
    if fsp == "Y" then
-      if fsstat == 1 and fsonbal == 0 then
-         fsoffbal = fsoff
-         gpio.write(fspin, gpio.LOW) -- put ON the main motor
-         fsstat = 0
-      end
-      if fsstat == 0 and fsoffbal == 0 then
-         fsonbal = fson
-         gpio.write(fspin, gpio.LOW) -- put ON the main motor
+      if fsoffbal >= fsoff and fsstat == 0 then
+         fsoffbal = 0
+         fsonbal = 0
+         gpio.write(fspin, 0) -- put ON fail safe motor
          fsstat = 1
+      end
+      if fsonbal >= fson and fsstat == 1 then
+         fsoffbal = 0
+         fsonbal = 0
+         gpio.write(fspin, 1) -- put OFF fail safe motor
+         fsstat = 0
       end
    end
 
    if airp == "Y" then
-      if airstat == 1 and aironbal == 0 then
-         airoffbal = airoff
-         gpio.write(airpin, gpio.LOW) -- put ON the main motor
-         airstat = 0
-      end
-      if airstat == 0 and aironbal == 0 then
-         aironbal = airon
-         gpio.write(airpin, gpio.HIGH) -- put ON the main motor
+      if airoffbal >= airoff and airstat == 0 then
+         airoffbal = 0
+         aironbal = 0
+         gpio.write(airpin, 0) -- put ON air pump
          airstat = 1
       end
-   end
-
-   if mainstat == 1 and mainonbal > 0 then
-      mainonbal = mainonbal - 1
-      if mainonbal == 0 and rainp == "Y" then
-         if (gpio.read(rainpin)) == 1 then
-            sendstr="Dry"
-            sendSMS("Raindrop%20Sensor%20did%20not%20get%20water%20from%20Fogger")
-         else
-            sendstr="Wet"
-         end
-      end
-      if hx711p == "Y" then
-         if isTare == 0 then
-            sendstr=sendstr.."!0" -- weight unTared (Nutrient Weight)
-         else
-            weight=getAverageWeight(10)
-            sendstr=sendstr.."!"..string.format("%0.3f",weight)
-            if weight < 2 then
-               sendSMS("Nutrient%20is%20remaining%20only%20"..string.format("%0.3f",weight).."%20litres")
-            end
-         end
-      end
-      if ds18b20p == "Y" then
-         nuttemp = -60
-         t = require("ds18b20")
-         function readout(temp)
-            if t.sens then
-            end
-            for addr, temp in pairs(temp) do
---              nutaddr=addr:byte(1,8)
-                nutaddr=addr
-                nuttemp = temp
-            end
-            sendstr=sendstr.."!"..tostring(nuttemp)
-            t = nil
-            package.loaded["ds18b20"] = nil
-         end
-         t:read_temp(readout, dspin, t.C)
-         if nuttemp > 28 and connected == "Y" then
-            sendSMS("Nutrient%20temperature%20has%20increased%20to%20"..nuttemp)
-         end
+      if aironbal >= airon and airstat == 1 then
+         airoffbal = 0
+         aironbal = 0
+         gpio.write(airpin, 1) -- put OFF air pump
+         airstat = 0
       end
    end
 
-   if mainstat == 0 and mainoffbal > 0 then
-      mainoffbal = mainoffbal - 1
-   end
-
-   if fsstat == 1 and fsonbal > 0 then
-      fsonbal = fsonbal - 1
-   end
-   if fsstat == 0 and fsoffbal > 0 then
-      fsoffbal = fsoffbal - 1
-   end
-
-   if airstat == 1 and aironbal > 0 then
-      aironbal = aironbal - 1
-   end
-   if airstat == 0 and airoffbal > 0 then
-      airoffbal = airoffbal - 1
-   end
 end)
 -- print("Starting web server on router")
 -- dofile("SprayWorld.lc")

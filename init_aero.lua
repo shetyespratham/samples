@@ -218,7 +218,8 @@ function splitr(s, delm)
    end 
    return result;
 end
-
+hxsent=0
+rainsent=0
 function tare(t)
    sum=hx711_read()
    sum=0
@@ -295,7 +296,7 @@ function ThingSpeak()
       -- verifycert()
       GetChannels()
       if chnlspresent == "Y" then
-         writemyip()
+--       writemyip()
          writestartrecord()
       end
    end
@@ -335,14 +336,16 @@ function writestartrecord()
    end)
 end
 function sendSMS(SMSText)
-   twytpn1 = string.sub(twytpn,2)
-   twypn1 = string.sub(twypn, 2)
-   headers = {
-     ["Content-Type"] = "application/x-www-form-urlencoded\r\n",
-     ["Authorization"] = "Basic "..encoded
-   }
-   body = "To=%2B"..twypn1.."&From=%2B"..twytpn1.."&Body="..SMSText
-   http.post("https://api.twilio.com/2010-04-01/Accounts/"..twisid.."/Messages.json",
+   if file.exists("ThingSpeak.mcu") and connected == "Y" then
+      twytpn1 = string.sub(twytpn,2)
+      twypn1 = string.sub(twypn, 2)
+      encoded=encoder.toBase64(twisid..":"..twitkn)
+      headers = {
+        ["Content-Type"] = "application/x-www-form-urlencoded\r\n",
+        ["Authorization"] = "Basic "..encoded
+      }
+      body = "To=%2B"..twypn1.."&From=%2B"..twytpn1.."&Body="..SMSText
+      http.post("https://api.twilio.com/2010-04-01/Accounts/"..twisid.."/Messages.json",
            {headers = headers}, body,
            function(code,data)
            if (code < 0) then
@@ -352,16 +355,20 @@ function sendSMS(SMSText)
               print("SMS sent")
            end
        end)
+       sendWhatsApp(SMSText)
+   end
 end
 function sendWhatsApp(SMSText)
-   twtwn1 = string.sub(twtwn, 2)
-   twywn1 = string.sub(twywn, 2)
-   headers = {
-     ["Content-Type"] = "application/x-www-form-urlencoded\r\n",
-     ["Authorization"] = "Basic "..encoded
-   }
-   body = "To=whatsapp%3A%2B"..twywn1.."&From=whatsapp%3A%2B"..twtwn1.."&Body="..SMSText
-   http.post("https://api.twilio.com/2010-04-01/Accounts/"..twisid.."/Messages.json",
+   if file.exists("ThingSpeak.mcu") and connected == "Y" then
+      twtwn1 = string.sub(twtwn, 2)
+      twywn1 = string.sub(twywn, 2)
+      encoded=encoder.toBase64(twisid..":"..twitkn)
+      headers = {
+        ["Content-Type"] = "application/x-www-form-urlencoded\r\n",
+        ["Authorization"] = "Basic "..encoded
+      }
+      body = "To=whatsapp%3A%2B"..twywn1.."&From=whatsapp%3A%2B"..twtwn1.."&Body="..SMSText
+      http.post("https://api.twilio.com/2010-04-01/Accounts/"..twisid.."/Messages.json",
            {headers = headers}, body,
            function(code,data)
            if (code < 0) then
@@ -371,6 +378,7 @@ function sendWhatsApp(SMSText)
               print("SMS sent")
            end
        end)
+   end
 end
 function GetChannels()
     http.get("http://api.thingspeak.com/channels.json?api_key="..usrapikey,  function(code, data)
@@ -529,13 +537,15 @@ function Routers()
 end
 
 motdetbal=0
+motsent=0
 function motcb()
 -- value becomes 1 after motions
    gpio.trig(motpin, gpio.INTR_DISABLE)
    motdet=1
    motdetbal=0
-   if daynight == 1 then
+   if daynight == 1 and motsent == 0 then
       sendSMS("Motion%20detected%20in%20night%20time%20before%20"..mottim.."%20minutes")
+      motsent = 1
    end
 end
 
@@ -545,25 +555,57 @@ function ldrcb(level, pulse1, eventcnt)
    daynight=gpio.read(ldrpin)
 end
 
+dhtstats=0
+dhtsent=0
+lastdht=0
+function dht_readweb()
+   if ((node.uptime()/1000000) - 1) > lastdht then
+      lastdht=node.uptime()/1000000
+      dhtstats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
+      if dhtstats ~= dht.OK then
+         dhtstats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
+      end
+      if dhtstats ~= dht.OK then
+         dhtstats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
+      end
+   end
+end
 function dht_read()
-   stats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
-   if stats ~= dht.OK then
-      stats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
+   if ((node.uptime()/1000000) - 1) > lastdht then
+      lastdht=node.uptime()/1000000
+      dhtstats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
+      if dhtstats ~= dht.OK then
+         dhtstats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
+      end
+      if dhtstats ~= dht.OK then
+         dhtstats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
+      end
    end
-   if stats ~= dht.OK then
-      stats, currtemp, currhumid, temp, humi = dht.read2x(dhtpin)
-   end
-   if stats == dht.OK then
-      for i=1, #temps do
-          if currtemp >= tempfrom[i] and currtemp < tempto[i] then
-             curron=tempon[i]
-             curroff=tempoff[i]
-          end
+   if dhtstats == dht.OK then
+      print("currtemp="..currtemp)
+      print("currhumid="..currhumid)
+      print("temp="..temp)
+      print("humi="..humi)
+      for i=1, #tempfrom do
+         if currtemp >= tempfrom[i] and currtemp < tempto[i] then
+            curron=tempon[i]
+            curroff=tempoff[i]
+         end
       end
    else
+      if dhtsent == 0 then
+         if connected == "Y" and file.exists("ThingSpeak.mcu") then
+            sendSMS("Humidity%20and%20Temperature%20Sensor%20did%20not%20read%20data")
+         end
+         dhtsent = 1
+      end
       curron=3
       curroff=600
    end
+   if daynight == 1 then
+      curroff = curroff + (curroff * nightoff / 100)
+   end
+   curroff = math.floor(curroff + (curroff * humidoff * ((currhumid - 50) / 10) / 100))
 end
 
 function m.onTouch(pads)
@@ -616,10 +658,19 @@ function m.config()
    print("will trigger at thres: ", thres)
    m._tp:intrEnable()
 end
+nuttsent=0
+function readout(temp)
+   if t.sens then
+   end
+   for addr, temp in pairs(temp) do
+--    nutaddr=addr
+      nuttemp = temp
+   end
+end
 
 -- actual execution
 getsensors() 
-
+sendSMS("System%20Started")
 if file.exists("Calibrate.mcu") then
    open = file.open or io.open
    fh = open("Calibrate.mcu", "r")
@@ -651,7 +702,7 @@ gpio.config( {gpio={mainpin,fspin,airpin}, dir=gpio.OUT, pull=gpio.PULL_UP })
 
 -- setup ds18b20 temp sensor
 ow.setup(dspin)
-
+t = require("ds18b20")
 -- setup rainpin, ldrpin, dspin, motpin
 gpio.config({gpio={rainpin,ldrpin,motpin}, dir=gpio.IN, pull=gpio.PULL_UP })
 gpio.trig(ldrpin, gpio.INTR_UP_DOWN, ldrcb)

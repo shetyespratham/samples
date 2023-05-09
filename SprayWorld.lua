@@ -79,7 +79,12 @@ function wifi_scan()
        end
    end)
 end
-
+function hms(a)
+   hours = math.floor(a/60/60)
+   mins = math.floor((a - (hours * 60 * 60)) /60)
+   secs = math.floor(a - ((hours * 60 * 60) + (mins * 60)))
+   return (string.format("%02d:%02d:%02d", hours, mins, secs))
+end
 print("Starting Web Server from inside SprayWorld.lc")
 srv=net.createServer(net.TCP, 2)
 srv:listen(80,function(conn)
@@ -273,7 +278,6 @@ srv:listen(80,function(conn)
            conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")
         end
         if string.find(payload,"GET /sfunction") then
-           sendstr=tostring
            if rainp == "Y" then
               if (gpio.read(rainpin)) == 1 then
                  sendstr="Dry"
@@ -283,50 +287,61 @@ srv:listen(80,function(conn)
            else
               sendstr="Abs"
            end
-           if dhtp == "Y" then
-              stats, currtemp, currhumid, temp, humi = dht.read(dhtpin)
-              if stats ~= dht.OK then
-                 stats, currtemp, currhumid, temp, humi = dht.read(dhtpin)
-              end
-              if stats ~= dht.OK then
-                 stats, currtemp, currhumid, temp, humi = dht.read(dhtpin)
-              end
-              if stats == dht.OK then
-                 sendstr=sendstr.."!"..tostring(currtemp)
-                 sendstr=sendstr.."!"..tostring(currhumid)
-                 for i=1, #temps do
-                     if currtemp >= tempfrom[i] and currtemp < tempto[i] then
-                        sendstr=sendstr.."!"..tostring(tempon[i])
-                        sendstr=sendstr.."!"..tostring(tempoff[i])
-                     end
-                 end
-              else
-                 sendstr=sendstr.."!Failed!Failed"
-              end
+           dht_readweb()
+           if ds18b20p == "Y" then
+              t:read_temp(readout, dspin, t.C)
+           end
+           if dhtstats == dht.OK then
+              sendstr=sendstr.."!"..tostring(currtemp)
+              sendstr=sendstr.."!"..tostring(currhumid)
            else
-              sendstr=sendstr.."!Abs!Abs"
-           end 
+              sendstr=sendstr.."!Failed!Failed"
+           end
            if mainp == "Y" then
               sendstr=sendstr.."!"..tostring(curron)
-              sendstr=sendstr.."!"..tostring(curronb)
+              if mainstat == 0 then
+                 sendstr=sendstr.."!"..hms(mainonbal)
+              else
+                 sendstr=sendstr.."!".."now ON"
+              end
               sendstr=sendstr.."!"..tostring(curroff)
-              sendstr=sendstr.."!"..tostring(curroffb)
+              if mainstat == 1 then
+                 sendstr=sendstr.."!"..hms(mainoffbal)
+              else
+                 sendstr=sendstr.."!".."now OFF"
+              end
            else
               sendstr=sendstr.."!Abs!Abs!Abs!Abs"
            end 
            if fsp == "Y" then
               sendstr=sendstr.."!"..tostring(fson)
-              sendstr=sendstr.."!"..tostring(fsonb)
+              if fsstat == 0 then
+                 sendstr=sendstr.."!"..hms(fsonbal)
+              else
+                 sendstr=sendstr.."!".."now ON"
+              end
               sendstr=sendstr.."!"..tostring(fsoff)
-              sendstr=sendstr.."!"..tostring(fsoffb)
+              if fsstat == 1 then
+                 sendstr=sendstr.."!"..hms(fsoffbal)
+              else
+                 sendstr=sendstr.."!".."now OFF"
+              end
            else
               sendstr=sendstr.."!Abs!Abs!Abs!Abs"
            end 
            if airp == "Y" then
               sendstr=sendstr.."!"..tostring(airon)
-              sendstr=sendstr.."!"..tostring(aironb)
+              if airstat == 0 then
+                 sendstr=sendstr.."!"..hms(aironbal)
+              else
+                 sendstr=sendstr.."!".."now ON"
+              end
               sendstr=sendstr.."!"..tostring(airoff)
-              sendstr=sendstr.."!"..tostring(airoffb)
+              if airstat == 1 then
+                 sendstr=sendstr.."!"..hms(airoffbal)
+              else
+                 sendstr=sendstr.."!".."now OFF"
+              end
            else
               sendstr=sendstr.."!Abs!Abs!Abs!Abs"
            end 
@@ -341,6 +356,7 @@ srv:listen(80,function(conn)
               sendstr=sendstr.."!Abs"
            end 
            if ds18b20p == "Y" then
+--            t:read_temp(readout, dspin, t.C)
               sendstr=sendstr.."!"..tostring(nuttemp)
            else
               sendstr=sendstr.."!Abs"
@@ -363,7 +379,7 @@ srv:listen(80,function(conn)
                  sendstr=sendstr.."!No"
                  motdet="No"
               end
-              sendstr=sendstr.."!"..tostring(motdetb)
+              sendstr=sendstr.."!"..tostring(motdetbal)
            else
               sendstr=sendstr.."!Abs!Abs"
            end 
