@@ -185,6 +185,9 @@ function insertitem(event, typetext) {
     }
     document.getElementById(typetext).style.display = "block";
     event.currentTarget.className += " active";
+    if (typetext == "R") {
+       srchrouters();
+    }
 }
 //function raindscript() {
 //   var slider = document.getElementById("raindid");
@@ -816,7 +819,7 @@ lab2 {
 <fieldset name="routers" id="routerid"><legend>Choose SSID</legend>
   SSID <select name="selectrou" class="form-control" id="selectrouid">
     </select>
-  <button type="button" onclick="srchrouters()">Search Routers</button>  <br>
+  <br>
   Router Password <input name="rpwd" id="rpwdid" type="password" minlength="8" maxlength="15" size="12"><br> <br>
   <button type="submit" id="roubut" onclick="rousave()">Save Router Record</button> <br>
   <p id="rouerr"></p>

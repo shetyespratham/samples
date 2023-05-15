@@ -12,7 +12,7 @@ airoffbal=airoff
 
 onofftimer = tmr.create()
 onofftimer:register(1000, tmr.ALARM_AUTO, function()
-   print("doing aeroponics")
+-- print("doing aeroponics")
    if end_router == "Y" then
       print("routimer unregistered")
       routimer:unregister();
@@ -48,6 +48,7 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
          if (gpio.read(rainpin)) == 0 then
             if rainsent == 0 then
                sendSMS("Raindrop%20Sensor%20did%20not%20get%20water%20from%20Fogger")
+               print("Raindrop%20Sensor%20did%20not%20get%20water%20from%20Fogger")
                rainsent = 1
             end
          end
@@ -57,6 +58,7 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
                if weight < 2 then
                   if hxsent == 0 then
                      sendSMS("Nutrient%20is%20remaining%20only%20"..string.format("%0.3f",weight).."%20litres")
+                     print("Nutrient%20is%20remaining%20only%20"..string.format("%0.3f",weight).."%20litres")
                      hxsent = 1
                   end
                end
@@ -66,6 +68,7 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
             if nuttemp > 28 and connected == "Y" then
                if nuttsent == 0 then
                   sendSMS("Nutrient%20temperature%20has%20increased%20to%20"..nuttemp)
+                  print("Nutrient%20temperature%20has%20increased%20to%20"..nuttemp)
                   nuttsent = 1
                end
             end

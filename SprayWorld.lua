@@ -58,27 +58,6 @@ function tostringhms(a)
    print(tostring(hours)..":"..(mins)..":"..(secs))
    return (tostring(hours)..":"..tostring(mins)..":"..tostring(secs))
 end  
-ssidlist1=""
-function wifi_scan()
-   ssidlist=""
-   wifi.sta.scan({ hidden = 1 }, function(err,arr)
-      if err then
-         print ("Scan failed:", err)
-      else
-         for i,ap in ipairs(arr) do
-             print("i="..i)
-             print(ap.ssid.."kvs")
-             if i == 1 then
-                ssidlist=ap.ssid
-             else
-                ssidlist=ssidlist.."!"..ap.ssid
-             end
-         end
-         print("-- Total APs: ", #arr)
-         ssidlist1=ssidlist
-       end
-   end)
-end
 function hms(a)
    hours = math.floor(a/60/60)
    mins = math.floor((a - (hours * 60 * 60)) /60)
@@ -90,38 +69,31 @@ srv=net.createServer(net.TCP, 2)
 srv:listen(80,function(conn)
   conn:on("receive",function(conn,payload)
      if string.find(payload, "GET \/ ") then
-        print("KVS Payload \/:"..payload)
         i=0
         sendingidx=1
         f2opn = "ShetyesSprayer.html.gz"
         nextChunk(conn, "gz")
      end
 --     if string.find(payload, "GET \/Pratham.jpg") then
---        print("KVS Payload \/Pratham.jpg:"..payload)
 --        i=0
 --        sendingidx=1
 --        f2opn = "Pratham.jpg"
 --        nextChunk(conn, "jpg")
 --     end
      if string.find(payload, "GET \/failsafe.jpg") then
-        print("KVS Payload \/failsafe.jpg:"..payload)
         i=0
         sendingidx=1
         f2opn = "failsafe.jpg"
         nextChunk(conn, "jpg")
      end
 --     if string.find(payload, "GET \/favicon.ico") then
---        print("KVS Payload \/favicon.ico:"..payload)
 --        i=0
 --        sendingidx=1
 --        f2opn = "favicon.ico"
 --        nextChunk(conn, "ico")
 --     end
      if string.find(payload, "GET \/chkcred") then
-          print(payload)
           fndt=split(payload)
-          print(fndt.user)
-          print(fndt.pass)
            if fndt.user == syslgn and fndt.pass == syspwd then
                  conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nyes")
                  loggedin="yes"
@@ -132,10 +104,8 @@ srv:listen(80,function(conn)
      end
      if loggedin == "yes" then
         if string.find(payload,"GET \/getssidlist") then
-           print("going for scan")
-           wifi_scan()
-           if ssidlist1 ~= nil then
-              conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..ssidlist1)
+           if ssidlist ~= nil then
+              conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..ssidlist)
            else
               conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n")
            end
@@ -145,7 +115,6 @@ srv:listen(80,function(conn)
            node.restart()
         end
         if string.find(payload, "GET \/areyouthere") then
-           print("Request received through router:"..payload)
            if myip then
               conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..myip)
            else
@@ -153,7 +122,6 @@ srv:listen(80,function(conn)
            end
         end
         if string.find(payload, "GET \/netsave") then
-           print("netsave Request received")
            fndt=split(payload)
            open = file.open or io.open
            fh = open("Credentials.mcu", "w")
@@ -163,7 +131,6 @@ srv:listen(80,function(conn)
            conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nyes")
         end
         if string.find(payload, "GET \/saverourec") then
-           print("saverourec Request received:"..payload)
            fndt=split(payload)
            if file.exists("Routers.mcu") then
               open = file.open or io.open
@@ -200,7 +167,6 @@ srv:listen(80,function(conn)
            conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nRecord saved")
         end
         if string.find(payload, "GET \/loadfile") then
-           print("loadfile Request received:"..payload)
            fndt=split(payload)
            if file.exists(fndt.file2load) then
               open = file.open or io.open
@@ -213,7 +179,6 @@ srv:listen(80,function(conn)
            end
         end        
         if string.find(payload, "GET \/savefile") then
-           print("savefile Request received:"..payload)
            fndt=split(payload)
            open = file.open or io.open
            fh = open(fndt.save2file, "w")
@@ -223,8 +188,7 @@ srv:listen(80,function(conn)
            conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")
         end        
         if string.find(payload, "GET \/thngload") then
-           print("thing loadfile Request received:"..payload)
-           fndt=split(payload)
+--         fndt=split(payload)
            if file.exists("ThingSpeak.mcu") then
               open = file.open or io.open
               fh = open("ThingSpeak.mcu", "r")
@@ -236,7 +200,6 @@ srv:listen(80,function(conn)
            end
         end        
         if string.find(payload, "GET \/thngsave") then
-           print("thing savefile Request received:"..payload)
            fndt=split(payload)
            open = file.open or io.open
            fh = open("ThingSpeak.mcu", "w")
@@ -288,9 +251,9 @@ srv:listen(80,function(conn)
               sendstr="Abs"
            end
            dht_readweb()
-           if ds18b20p == "Y" then
-              t:read_temp(readout, dspin, t.C)
-           end
+--         if ds18b20p == "Y" then
+--            t:read_temp(readout, dspin, t.C)
+--         end
            if dhtstats == dht.OK then
               sendstr=sendstr.."!"..tostring(currtemp)
               sendstr=sendstr.."!"..tostring(currhumid)
@@ -383,8 +346,7 @@ srv:listen(80,function(conn)
            else
               sendstr=sendstr.."!Abs!Abs"
            end 
-           print(sendstr)
-           conn:send("Http/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/html\r\n\r\n"..sendstr)
+           conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..sendstr)
         end 
      end
   end)

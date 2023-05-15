@@ -1,5 +1,5 @@
 -- Global Variables (Modify for your network)
-
+node.osprint(false)
 chnlspresent = "Y"
 ipchnlid = ""
 ipwkey = ""
@@ -124,7 +124,6 @@ function getsensors()
       fh = open("SystemSensors.mcu", "r")
       filerec=fh:read()
       fh:close()
-      print(filerec.."!")
       tokens=splitr(filerec.."!", "!")
       if tokens[1] == "true" then
          rainp = "Y"
@@ -277,7 +276,8 @@ function hx711_read()
   return count
 end
 
-
+thng_started = "N"
+thng_done = "N"
 function ThingSpeak()
    if file.exists("ThingSpeak.mcu") then
       open = file.open or io.open
@@ -293,23 +293,13 @@ function ThingSpeak()
       twypn=tokens[6]
       twtwn=tokens[7]
       twywn=tokens[8]
-      -- verifycert()
-      GetChannels()
-      if chnlspresent == "Y" then
---       writemyip()
-         writestartrecord()
-      end
+--    if chnlspresent == "Y" then
+--       writestartrecord()
+--    end
+      thng_started = "Y"
    end
 end
 function writemyip()
---    http.delete("http://api.thingspeak.com/channels/"..ipchnlid.."/feeds.json?api_key="..usrapikey..","","",function(code, data)
---       if (code < 0) then
---          print("Channel clear failed")
---       else
---          print(code, data)
---          print("Channel cleared")
---       end
---  end)
   http.post("http://api.thingspeak.com/update.json",
     "Content-Type: application/json\r\n",
     '{"api_key":"'..ipwkey..'", "field1" : "'..myip..'" }',
@@ -322,20 +312,10 @@ function writemyip()
     end
   end)
 end
-function writestartrecord()
-   http.post("http://api.thingspeak.com/update.json",
-       "Content-Type: application/json\r\n",
-       '{"api_key":"'..alrtwkey..'", "field1" : "System Started" }',
-       function(code, data)
-       if (code < 0) then
-         print("HTTP request failed")
-       else
-         print(code, data)
-         print("System Started alert added to channel")
-       end
-   end)
-end
+SMS_fail_pass=""
 function sendSMS(SMSText)
+   SMS_fail_pass = "p"
+   print("SMSText="..SMSText)
    if file.exists("ThingSpeak.mcu") and connected == "Y" then
       twytpn1 = string.sub(twytpn,2)
       twypn1 = string.sub(twypn, 2)
@@ -350,9 +330,11 @@ function sendSMS(SMSText)
            function(code,data)
            if (code < 0) then
               print("Send SMS Failed")
+              SMS_fail_pass = "f"
            else
               print(code, data)
               print("SMS sent")
+              SMS_fail_pass = "p"
            end
        end)
        sendWhatsApp(SMSText)
@@ -380,47 +362,22 @@ function sendWhatsApp(SMSText)
        end)
    end
 end
+got_channels = "N"
 function GetChannels()
+    got_channels = "N"
     http.get("http://api.thingspeak.com/channels.json?api_key="..usrapikey,  function(code, data)
       if (code < 0) then
         print("HTTP request failed")
       else
         ParseData(data)
---      print(code, data)
-        chnlspresent = "Y"
-        if ipchnlid == "" then
-           CreateChannel("AutoSprayerIP", "IP")
-           chnlspresent = "N"
-        end
-        if alrtchnlid == "" then
-           CreateChannel("AutoSprayerAlerts", "Alerts")
-           chnlspresent = "N"
-        end
-        if recschnlid == "" then
-           CreateChannel("AutoSprayerRecords", "Records")
-           chnlspresent = "N"
-        end
-        if chnlspresent == "N" then
-           http.get("http://api.thingspeak.com/channels.json?api_key="..usrapikey, function(code, data)
-              if (code < 0) then
-                print("HTTP request failed")
-              else
-                ParseData(data)
-                chnlspresent = "Y"
-                if ipchnlid == "" or alrtchnlid == "" or recschnlid == "" then
-                   chnlspresent = "N"
-                else
-                   chnlspresent = "Y"
-                end
-              end
-           end)
-        end
+        print(code, data)
       end
+      got_channels = "Y"
     end)
 end
 function ParseData(data)
-    t = sjson.decode(data)
-    for k,v in pairs(t) do
+    tparse = sjson.decode(data)
+    for k,v in pairs(tparse) do
         for a,b in pairs(v) do 
             if a == "name" then
                chnlname = b
@@ -446,43 +403,65 @@ function ParseData(data)
                end
             end
         end
-        if chnlname == "AutoSprayerIP" then
+        if chnlname == "AeroSprayerIP" then
            ipchnlid = chnlid
            ipwkey = wapikey
            iprkey = rapikey
         end
-        if chnlname == "AutoSprayerAlerts" then
+        if chnlname == "AeroSprayerAlerts" then
            alrtchnlid = chnlid
            alrtwkey = wapikey
            alrtrkey = rapikey
         end
-        if chnlname == "AutoSprayerRecords" then
+        if chnlname == "AeroSprayerRecords" then
            recschnlid = chnlid
            recswkey = wapikey
            recsrkey = rapikey
         end
-        if ipchnlid == "" then
+--      if ipchnlid == "" then
            print("Channel Name ="..chnlname)
            print("Channel ID ="..chnlid)
            print("Write API Key ="..wapikey)
            print("Read API Key = "..rapikey)
            print("================")
-        end
+--      end
     end
 end
+ipchnl_created = "N"
+alrtchnl_created = "N"
+recschnl_created = "N"
+chnl_created = "N"
+create_free = "Y"
 function CreateChannel(chnlname, fldname)
-   http.post("http://api.thingspeak.com/channels.json",
-          "Content-Type: application/json\r\n",
-          '{"api_key": "'..uapikey..'", "name": "'..chnlname..'", "description": "'..chnlname..'", "field1" : "'..fldname..'" }',
-          function(code, data)
-      if (code < 0) then
-        print("HTTP request failed")
-      else
-        if code == 200 then
-           print(code, data)
-        end
-      end
-   end)
+   create_free = "N"
+   if chnlname == "AeroSprayerIP" then
+      ipchnl_created = "Y"
+      ipchnlid = "temp"
+   end
+   if chnlname == "AeroSprayerAlerts" then
+      alrtchnl_created = "Y"
+      alrtchnlid = "temp"
+   end
+   if chnlname == "AeroSprayerRecords" then
+      recschnl_created = "Y"
+      recschnlid = "temp"
+   end
+   headers = {
+       ["Content-Type"] = "application/x-www-form-urlencoded\r\n"
+   }
+   body = "api_key="..usrapikey.."&name="..chnlname.."&description="..chnlname.."&field1="..fldname
+   print("CreateChannelBody="..body)
+   http.post("https://api.thingspeak.com/channels.json",
+        {headers = headers}, body,
+        function(code, data)
+           if (code < 0) then
+              print("HTTP request failed")
+           else
+              print(code, data)
+           end
+           create_free = "Y"
+           chnl_created = "Y"
+        end)
 end
 end_router = "N"
 rourecs={}
@@ -490,10 +469,6 @@ ri=1
 function Routers()
 -- aptimer:unregister()
 -- print("aptimer unregistered")
-   if aero_started == "N" then
-      aero_started = "Y"
-      dofile("aeroponics.lua")
-   end
    if file.exists("Routers.mcu") then
       open = file.open or io.open
       fh = open("Routers.mcu", "r")
@@ -522,7 +497,6 @@ function Routers()
                 connected="Y"
                 ri=#rourecs
                 print("Connected to router using "..rouflds[1])
---              ThingSpeak()
             end)
             if (ri <= #rourecs) then
                ri=ri+1;
@@ -543,8 +517,9 @@ function motcb()
    gpio.trig(motpin, gpio.INTR_DISABLE)
    motdet=1
    motdetbal=0
-   if daynight == 1 and motsent == 0 then
+   if daynight == 1 and motsent == 0 and thng_done == "Y" then
       sendSMS("Motion%20detected%20in%20night%20time%20before%20"..mottim.."%20minutes")
+      print("Motion%20detected%20in%20night%20time%20before%20"..mottim.."%20minutes")
       motsent = 1
    end
 end
@@ -582,10 +557,10 @@ function dht_read()
       end
    end
    if dhtstats == dht.OK then
-      print("currtemp="..currtemp)
-      print("currhumid="..currhumid)
-      print("temp="..temp)
-      print("humi="..humi)
+--    print("currtemp="..currtemp)
+--    print("currhumid="..currhumid)
+--    print("temp="..temp)
+--    print("humi="..humi)
       for i=1, #tempfrom do
          if currtemp >= tempfrom[i] and currtemp < tempto[i] then
             curron=tempon[i]
@@ -594,10 +569,13 @@ function dht_read()
       end
    else
       if dhtsent == 0 then
-         if connected == "Y" and file.exists("ThingSpeak.mcu") then
+         if connected == "Y" and thng_done == "Y" then
             sendSMS("Humidity%20and%20Temperature%20Sensor%20did%20not%20read%20data")
+            print("Humidity%20and%20Temperature%20Sensor%20did%20not%20read%20data")
+          if SMS_fail_pass == "p" then
+             dhtsent = 1
+          end
          end
-         dhtsent = 1
       end
       curron=3
       curroff=600
@@ -616,7 +594,6 @@ function m.onTouch(pads)
       lastuntouch = touchstart - touchend
       print("Touch - untouched for millis: ", lastuntouch)
       local raw = m._tp:read()
-      print("kvs")
       for key,value in pairs(raw) do
           print(value)
       end
@@ -667,10 +644,27 @@ function readout(temp)
       nuttemp = temp
    end
 end
-
+ssidlist=""
+function wifi_scan()
+   wifi.sta.scan({ hidden = 1 }, function(err,arr)
+      if err then
+         print ("Scan failed:", err)
+      else
+         for i,ap in ipairs(arr) do
+             print("i="..i)
+             print(ap.ssid)
+             if i == 1 then
+                ssidlist=ap.ssid
+             else
+                ssidlist=ssidlist.."!"..ap.ssid
+             end
+         end
+         print("-- Total APs: ", #arr)
+       end
+   end)
+end
 -- actual execution
 getsensors() 
-sendSMS("System%20Started")
 if file.exists("Calibrate.mcu") then
    open = file.open or io.open
    fh = open("Calibrate.mcu", "r")
@@ -777,9 +771,11 @@ aptctr=0
 rou_started="N"
 web_started="N"
 aero_started="N"
+sysstartedsent="N"
 aptimer=tmr.create()
 aptimer:register(5000, tmr.ALARM_SEMI, function()
-       print("Inside AP Timer")
+--     print("Inside AP Timer")
+       tptimer:unregister()
        localTime = time.getlocal()
        lowbits = node.uptime()
        hours = math.floor(lowbits/1000000/60/60)
@@ -788,27 +784,46 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
 --     print(string.format("%04d-%02d-%02d %02d:%02d:%02d DST:%d", localTime["year"], localTime["mon"], localTime["day"], localTime["hour"], localTime["min"], localTime["sec"], localTime["dst"]))
 --     print(string.format("%02d:%02d:%02d", hours, mins, secs))
 
--- print("Going for Routers start")
--- print("cli_connected="..cli_connected)
--- if file.exists("SystemSensors.mcu") then
---    print("SystemSensors.mcu exists")
--- else
---    print("SystemSensors.mcu DOES NOT exist")
--- end
--- if file.exists("CurrentSettings.cfg") then
---    print("CurrentSettings.cfg exists")
--- else
---    print("CurrentSettings.cfg DOES NOT exist")
--- end
--- print("rou_started="..rou_started)
-
        aptctr = aptctr + 1
-       if cli_connected == "N" and
-          rou_started == "N" and
+--     if cli_connected == "N" and
+       if rou_started == "N" and
           file.exists("SystemSensors.mcu") and
           file.exists("CurrentSettings.cfg") then
              rou_started = "Y"
              Routers()
+       end
+       if connected == "Y" and thng_started == "N" then
+             ThingSpeak()
+       end
+       if thng_started == "Y" and got_channels == "N" then
+             GetChannels()
+       end
+       if chnl_created == "Y" then
+          got_channels = "N"
+          chnl_created = "N"
+          GetChannels()
+       end
+       if got_channels == "Y" then
+          if ipchnlid == "" and create_free == "Y" then
+             ipchnl_created = "N"
+             CreateChannel("AeroSprayerIP", "IP")
+          end
+       end
+       if got_channels == "Y" and create_free == "Y" then
+          if alrtchnlid == "" and ipchnl_created == "Y" then
+             alrtchnl_created = "N"
+             CreateChannel("AeroSprayerAlerts", "Alerts")
+          end
+       end
+       if got_channels == "Y" and create_free == "Y" then
+          if recschnlid == "" and alrtchnl_created == "Y" then
+             recschnl_created = "N"
+             CreateChannel("AeroSprayerRecords", "Records")
+          end
+       end
+       if ipchnlid ~= "" and alrtchnlid ~= "" and recschnlid ~= "" and ipchnlid ~= "temp" and alrtchnlid ~= "temp" and recschnlid ~= "temp" then
+          thng_done = "Y"
+          got_channels = "Y"
        end
        if cli_connected == "Y" and
           web_started == "N" then
@@ -817,17 +832,40 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
           print("Starting web server")
           dofile("SprayWorld.lua")
        end
+       if connected == "Y" and sysstartedsent == "N" and thng_done == "Y" then
+          sendSMS("System%20Started")
+          print("System%20Started")
+          if SMS_fail_pass == "p" then
+             sysstartedsent = "Y"
+          end
+       end
        aptimer:start()
 end)
 tptimer=tmr.create()
-tptimer:register(15000, tmr.ALARM_SINGLE, function()
-        print("inside tptimer")
-        wifi.start()
-        wifi.mode(wifi.STATIONAP)
-        wifi.ap.config(cfg)
-        wifi.ap.setip(cfg)
---      wifi.ap.dhcp.config(cfgdh)
---      wifi.ap.dhcp.start()
-        aptimer:start();
+tpctr=0
+tptimer:register(2000, tmr.ALARM_AUTO, function()
+        if tpctr == 0 then
+           print("inside tptimer")
+           wifi.start()
+           wifi.mode(wifi.STATIONAP)
+        end
+        if tpctr == 4 then
+           wifi_scan()
+        end
+        if tpctr == 6 and aero_started == "N" then
+           aero_started = "Y"
+           dofile("aeroponics.lua")
+        end
+        if tpctr == 8 then
+           wifi.ap.config(cfg)
+           wifi.ap.setip(cfg)
+        end
+        if tpctr > 9 then
+           aptimer:start();
+        end
+        tpctr = tpctr + 1
+        if tpctr < 10 then
+           tptimer:start();
+        end
 end)
 tptimer:start();
