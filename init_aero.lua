@@ -8,12 +8,14 @@ alrtchnlid = ""
 alrtwkey = ""
 alrtrkey = ""
 recschnlid = ""
+hookchnlid = ""
+hookwkey = ""
+hookrkey = ""
 recswkey = ""
 recsrkey = ""
 usrapikey=""
 twisid=""
 twitkn=""
-thttpk=""
 twytpn=""
 twypn=""
 twtwn=""
@@ -35,7 +37,7 @@ airpin=16
 fspin=17
 mainpin=18	
 dhtpin=19
-rainpin=21
+rainpin=21  -- 0 if wet 1 if dry
 hx711_clk=22
 hx711_dat=23
 motpin=25       
@@ -98,6 +100,7 @@ station_cfg.save=true
 connected="N"
 cli_connected="N"
 myip=nil
+extip=nil
 
 -- functions
 
@@ -219,6 +222,7 @@ function splitr(s, delm)
 end
 hxsent=0
 rainsent=0
+taresent=0
 function tare(t)
    sum=hx711_read()
    sum=0
@@ -288,35 +292,71 @@ function ThingSpeak()
       usrapikey=tokens[1]
       twisid=tokens[2]
       twitkn=tokens[3]
-      thttpk=tokens[4]
-      twytpn=tokens[5]
-      twypn=tokens[6]
-      twtwn=tokens[7]
-      twywn=tokens[8]
---    if chnlspresent == "Y" then
---       writestartrecord()
---    end
+      twytpn=tokens[4]
+      twypn=tokens[5]
+      twtwn=tokens[6]
+      twywn=tokens[7]
       thng_started = "Y"
    end
 end
-function writemyip()
-  http.post("http://api.thingspeak.com/update.json",
-    "Content-Type: application/json\r\n",
-    '{"api_key":"'..ipwkey..'", "field1" : "'..myip..'" }',
-    function(code, data)
-    if (code < 0) then
-      print("HTTP request failed")
-    else
-      print(code, data)
-      print(myip.." Added to channel")
-    end
-  end)
+function getexternalip()
+   http.get("https://ifconfig.me/ip",
+       function(code, data)
+       if (code < 0) then
+         print("HTTP request failed")
+         extip="Nil"
+       else
+         extip=data
+       end
+   end)
 end
-SMS_fail_pass=""
-function sendSMS(SMSText)
-   SMS_fail_pass = "p"
-   print("SMSText="..SMSText)
+function sendRecord(SMSText)
+   if thng_done == "Y" then
+   http.get("https://api.thingspeak.com/update?api_key="..recswkey.."&field1="..SMSText,
+       function(code, data)
+       if (code < 0) then
+         print("HTTP request failed")
+       else
+         print(code, data)
+         print("Record added to channel")
+       end
+   end)
+   end
+end
+function sendAlert(SMSText)
+   if thng_done == "Y" then
+   http.get("https://api.thingspeak.com/update?api_key="..alrtwkey.."&field1="..SMSText,
+       function(code, data)
+       if (code < 0) then
+         print("HTTP request failed")
+       else
+         print(code, data)
+         print("alert added to channel")
+       end
+   end)
+   end
+end
+startwritten="N"
+function writestartrecord()
+   if thng_done == "Y" then
+   http.get("https://api.thingspeak.com/update?api_key="..ipwkey.."&field1="..myip.."!"..extip,
+       function(code, data)
+       if (code < 0) then
+         print("HTTP request failed")
+       else
+         print(code, data)
+         print("IP record added to channel")
+         startwritten = "Y"
+       end
+   end)
+   end
+end
+SMSStack={}
+function sendSMS()
+   if thng_done == "Y" then
    if file.exists("ThingSpeak.mcu") and connected == "Y" then
+      SMSText=SMSStack[table.maxn(SMSStack)] 
+      table.remove(SMSStack)
       twytpn1 = string.sub(twytpn,2)
       twypn1 = string.sub(twypn, 2)
       encoded=encoder.toBase64(twisid..":"..twitkn)
@@ -330,14 +370,14 @@ function sendSMS(SMSText)
            function(code,data)
            if (code < 0) then
               print("Send SMS Failed")
-              SMS_fail_pass = "f"
+              table.insert(SMSStack,SMSText)
            else
               print(code, data)
               print("SMS sent")
-              SMS_fail_pass = "p"
            end
+           tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() sendWhatsApp(SMSText) end)
        end)
-       sendWhatsApp(SMSText)
+   end
    end
 end
 function sendWhatsApp(SMSText)
@@ -359,9 +399,48 @@ function sendWhatsApp(SMSText)
               print(code, data)
               print("SMS sent")
            end
+           tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() sendAlert(SMSText) end)
        end)
    end
 end
+connection_made = "N"
+cheaders = {
+  Connection = "close",
+  ["If-Modified-Since"] = "Sat, 27 Oct 2018 00:00:00 GMT",
+}
+connection = http.createConnection("https://api.thingspeak.com/channels/4/feeds.json?api_key=F4", http.DELETE, { } )
+function make_connection()
+   connection = http.createConnection("https://api.thingspeak.com/channels/"..hookchnlid.."/feeds.json?api_key="..usrapikey, http.DELETE, { headers=cheaders } )
+   connection:on("complete", function(status)
+     print("Request completed with status code =", status)
+     if status == 200 then
+        connection_made = "Y"
+     end
+   end)
+end
+
+hookcmd="none"
+function gethooks()
+    hookcmd="none"
+    http.get("http://api.thingspeak.com/channels/"..hookchnlid.."/fields/1.json?api_key="..hookwkey.."&results=1", function(code, data)
+       if (code < 0) then
+          print("Request failed")
+       else
+          tparse = sjson.decode(data)
+          for k,v in pairs(tparse) do
+              for a,b in pairs(v) do
+                  if a == "field1" then
+                     hookcmd = b
+                  end
+              end
+          end
+          if connection_made == "Y" then
+             connection:request()
+          end
+       end
+    end)
+end
+
 got_channels = "N"
 function GetChannels()
     got_channels = "N"
@@ -418,6 +497,11 @@ function ParseData(data)
            recswkey = wapikey
            recsrkey = rapikey
         end
+        if chnlname == "AeroWebhook" then
+           hookchnlid = chnlid
+           hookwkey = wapikey
+           hookrkey = rapikey
+        end
 --      if ipchnlid == "" then
            print("Channel Name ="..chnlname)
            print("Channel ID ="..chnlid)
@@ -430,6 +514,7 @@ end
 ipchnl_created = "N"
 alrtchnl_created = "N"
 recschnl_created = "N"
+hookchnl_created = "N"
 chnl_created = "N"
 create_free = "Y"
 function CreateChannel(chnlname, fldname)
@@ -445,6 +530,10 @@ function CreateChannel(chnlname, fldname)
    if chnlname == "AeroSprayerRecords" then
       recschnl_created = "Y"
       recschnlid = "temp"
+   end
+   if chnlname == "AeroWebhook" then
+      hookchnl_created = "Y"
+      hookchnlid = "temp"
    end
    headers = {
        ["Content-Type"] = "application/x-www-form-urlencoded\r\n"
@@ -494,7 +583,7 @@ function Routers()
             wifi.sta.config(station_cfg)
 --          wifi.sta.connect()
             wifi.sta.connect(function(T)
-                connected="Y"
+--              connected="Y"
                 ri=#rourecs
                 print("Connected to router using "..rouflds[1])
             end)
@@ -518,8 +607,7 @@ function motcb()
    motdet=1
    motdetbal=0
    if daynight == 1 and motsent == 0 and thng_done == "Y" then
-      sendSMS("Motion%20detected%20in%20night%20time%20before%20"..mottim.."%20minutes")
-      print("Motion%20detected%20in%20night%20time%20before%20"..mottim.."%20minutes")
+      table.insert(SMSStack,"Motion%20detected%20in%20night%20time%20before%20"..mottim.."%20minutes")
       motsent = 1
    end
 end
@@ -570,11 +658,8 @@ function dht_read()
    else
       if dhtsent == 0 then
          if connected == "Y" and thng_done == "Y" then
-            sendSMS("Humidity%20and%20Temperature%20Sensor%20did%20not%20read%20data")
-            print("Humidity%20and%20Temperature%20Sensor%20did%20not%20read%20data")
-          if SMS_fail_pass == "p" then
-             dhtsent = 1
-          end
+            table.insert(SMSStack,"Humidity%20and%20Temperature%20Sensor%20did%20not%20read%20data")
+            dhtsent = 1
          end
       end
       curron=3
@@ -776,6 +861,9 @@ aptimer=tmr.create()
 aptimer:register(5000, tmr.ALARM_SEMI, function()
 --     print("Inside AP Timer")
        tptimer:unregister()
+       if table.maxn(SMSStack) > 0 then
+          sendSMS()
+       end
        localTime = time.getlocal()
        lowbits = node.uptime()
        hours = math.floor(lowbits/1000000/60/60)
@@ -793,10 +881,32 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
              Routers()
        end
        if connected == "Y" and thng_started == "N" then
+             getexternalip()
              ThingSpeak()
        end
        if thng_started == "Y" and got_channels == "N" then
              GetChannels()
+       end
+       if thng_done == "Y" and startwritten == "N" then
+          writestartrecord()
+       end
+       if thng_done == "Y" and startwritten == "Y" and connection_made == "N" then
+          make_connection()
+       end
+       if hookcmd == "restart" then
+          node.restart()
+       end
+       if hookcmd == "getip" then
+          writestartrecord()
+          hookcmd = "none"
+       end
+       if hookcmd == "startweb" then
+          hookcmd = "none"
+          if web_started ~= "Y" then
+             web_started = "Y"
+             print("Starting web server")
+             dofile("SprayWorld.lua")
+          end
        end
        if chnl_created == "Y" then
           got_channels = "N"
@@ -821,7 +931,13 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
              CreateChannel("AeroSprayerRecords", "Records")
           end
        end
-       if ipchnlid ~= "" and alrtchnlid ~= "" and recschnlid ~= "" and ipchnlid ~= "temp" and alrtchnlid ~= "temp" and recschnlid ~= "temp" then
+       if got_channels == "Y" and create_free == "Y" then
+          if hookchnlid == "" and recschnl_created == "Y" then
+             hookchnl_created = "N"
+             CreateChannel("AeroWebhook", "Webhooks")
+          end
+       end
+       if ipchnlid ~= "" and alrtchnlid ~= "" and recschnlid ~= "" and ipchnlid ~= "temp" and alrtchnlid ~= "temp" and recschnlid ~= "temp" and hookchnlid ~= "temp" then
           thng_done = "Y"
           got_channels = "Y"
        end
@@ -833,11 +949,8 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
           dofile("SprayWorld.lua")
        end
        if connected == "Y" and sysstartedsent == "N" and thng_done == "Y" then
-          sendSMS("System%20Started")
-          print("System%20Started")
-          if SMS_fail_pass == "p" then
-             sysstartedsent = "Y"
-          end
+          table.insert(SMSStack,"System%20Started")
+          sysstartedsent = "Y"
        end
        aptimer:start()
 end)

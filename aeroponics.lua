@@ -9,10 +9,26 @@ fsoffbal=fsoff
 airstat=0
 aironbal=0
 airoffbal=airoff
-
+ticks=0
 onofftimer = tmr.create()
 onofftimer:register(1000, tmr.ALARM_AUTO, function()
 -- print("doing aeroponics")
+   ticks = ticks + 1
+   if ticks == 597 then
+      t:read_temp(readout, dspin, t.C)
+   end
+   if ticks == 600 then
+      getsensors()
+   end
+   if ticks == 601 then
+      dht_readweb()
+      if dhtstats == dht.OK then
+         sendRecord("Temperature%20"..tostring(currtemp).."!Humidity%20"..tostring(currhumid).."!Motor%20ON%20Time%20"..tostring(curron).."!Motor%20OFF%20Time%20"..tostring(curroff).."!Light%20"..tostring(daynight).."!Nutrient%20Temp%20"..tostring(nuttemp))
+      end
+   end
+   if ticks > 601 then
+      ticks = 0
+   end
    if end_router == "Y" then
       print("routimer unregistered")
       routimer:unregister();
@@ -37,18 +53,19 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
       end
       mainoffbal = curroff
       mainstat = 1
-      gpio.write(mainpin, 0) -- put ON the main motor
+      gpio.write(mainpin, 1) -- put ON the main motor
+      sendRecord("Main%20motor%20Started")
    end
    if mainonbal >= curron and mainstat == 1 then
       mainoffbal = 0
       mainonbal = 0
       mainstat = 0
-      gpio.write(mainpin, 1) -- put OFF the main motor
+      sendRecord("Main%20motor%20stopped")
+      gpio.write(mainpin, 0) -- put OFF the main motor
       if rainp == "Y" then
-         if (gpio.read(rainpin)) == 0 then
-            if rainsent == 0 then
-               sendSMS("Raindrop%20Sensor%20did%20not%20get%20water%20from%20Fogger")
-               print("Raindrop%20Sensor%20did%20not%20get%20water%20from%20Fogger")
+         if (gpio.read(rainpin)) == 1 then
+            if rainsent == 0 and thng_done == "Y" then
+               table.insert(SMSStack,"Raindrop%20Sensor%20did%20not%20get%20water%20from%20Fogger")
                rainsent = 1
             end
          end
@@ -56,19 +73,21 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
             if isTare ~= 0 then
                weight=getAverageWeight(10)
                if weight < 2 then
-                  if hxsent == 0 then
-                     sendSMS("Nutrient%20is%20remaining%20only%20"..string.format("%0.3f",weight).."%20litres")
-                     print("Nutrient%20is%20remaining%20only%20"..string.format("%0.3f",weight).."%20litres")
+                  if hxsent == 0 and thng_done == "Y" then
+                     table.insert(SMSStack,"Nutrient%20is%20remaining%20only%20"..string.format("%0.3f",weight).."%20litres")
                      hxsent = 1
                   end
                end
             end
+            if isTare == 0 and taresent == 0 and thng_done == "Y" then
+               table.insert(SMSStack,"Nutrient%20weight%20is%20not%20tared")
+               taresent = 1
+            end
          end
          if ds18b20p == "Y" then
-            if nuttemp > 28 and connected == "Y" then
-               if nuttsent == 0 then
-                  sendSMS("Nutrient%20temperature%20has%20increased%20to%20"..nuttemp)
-                  print("Nutrient%20temperature%20has%20increased%20to%20"..nuttemp)
+            if nuttemp > currtemp and connected == "Y" then
+               if nuttsent == 0 and thng_done == "Y" then
+                  table.insert(SMSStack,"Nutrient%20temperature%20has%20increased%20to%20"..nuttemp)
                   nuttsent = 1
                end
             end
@@ -80,13 +99,15 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
       if fsoffbal >= fsoff and fsstat == 0 then
          fsoffbal = 0
          fsonbal = 0
-         gpio.write(fspin, 0) -- put ON fail safe motor
+         sendRecord("Failsafe%20motor%20started")
+         gpio.write(fspin, 1) -- put ON fail safe motor
          fsstat = 1
       end
       if fsonbal >= fson and fsstat == 1 then
          fsoffbal = 0
          fsonbal = 0
-         gpio.write(fspin, 1) -- put OFF fail safe motor
+         sendRecord("Failsafe%20motor%20stopped")
+         gpio.write(fspin, 0) -- put OFF fail safe motor
          fsstat = 0
       end
    end
@@ -95,18 +116,18 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
       if airoffbal >= airoff and airstat == 0 then
          airoffbal = 0
          aironbal = 0
-         gpio.write(airpin, 0) -- put ON air pump
+         sendRecord("AirPump%20started")
+         gpio.write(airpin, 1) -- put ON air pump
          airstat = 1
       end
       if aironbal >= airon and airstat == 1 then
          airoffbal = 0
          aironbal = 0
-         gpio.write(airpin, 1) -- put OFF air pump
+         sendRecord("AirPump%20stopped")
+         gpio.write(airpin, 0) -- put OFF air pump
          airstat = 0
       end
    end
 
 end)
--- print("Starting web server on router")
--- dofile("SprayWorld.lc")
 onofftimer:start();

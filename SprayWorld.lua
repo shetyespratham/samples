@@ -54,8 +54,8 @@ function tostringhms(a)
    hours = math.floor(a/1000000/60/60)
    mins = math.floor((a - (hours * 1000000*60*60)) /1000000/60)
    secs = math.floor((a - ((hours * 1000000*60*60) + (mins * 1000000 * 60)))/1000000)
-   print(string.format("%02d:%02d:%02d", hours, mins, secs))
-   print(tostring(hours)..":"..(mins)..":"..(secs))
+-- print(string.format("%02d:%02d:%02d", hours, mins, secs))
+-- print(tostring(hours)..":"..(mins)..":"..(secs))
    return (tostring(hours)..":"..tostring(mins)..":"..tostring(secs))
 end  
 function hms(a)
@@ -193,6 +193,7 @@ srv:listen(80,function(conn)
               open = file.open or io.open
               fh = open("ThingSpeak.mcu", "r")
               loadedrec=fh:read()
+              loadedrec=loadedrec.."!https://api.thingspeak.com/update?api_key="..hookwkey.."&field="
               fh:close()
               conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..loadedrec)
            else           
@@ -203,7 +204,7 @@ srv:listen(80,function(conn)
            fndt=split(payload)
            open = file.open or io.open
            fh = open("ThingSpeak.mcu", "w")
-           fh:write(fndt.thnguapi.."!"..fndt.twisid.."!"..fndt.twitkn.."!"..fndt.thnghttp.."!"..fndt.twytpn.."!"..fndt.twypn.."!"..fndt.twtwn.."!"..fndt.twywn)
+           fh:write(fndt.thnguapi.."!"..fndt.twisid.."!"..fndt.twitkn.."!"..fndt.twytpn.."!"..fndt.twypn.."!"..fndt.twtwn.."!"..fndt.twywn)
            fh:flush()
            fh:close()
            conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")
@@ -342,10 +343,11 @@ srv:listen(80,function(conn)
                  sendstr=sendstr.."!No"
                  motdet="No"
               end
-              sendstr=sendstr.."!"..tostring(motdetbal)
+              sendstr=sendstr.."!"..hms(motdetbal)
            else
               sendstr=sendstr.."!Abs!Abs"
            end 
+           sendstr=sendstr.."!"..tostringhms(node.uptime())
            conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..sendstr)
         end 
      end
