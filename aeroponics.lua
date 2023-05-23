@@ -10,12 +10,17 @@ airstat=0
 aironbal=0
 airoffbal=airoff
 ticks=0
+read_temp_busy="N"
 onofftimer = tmr.create()
 onofftimer:register(1000, tmr.ALARM_AUTO, function()
 -- print("doing aeroponics")
    ticks = ticks + 1
    if ticks == 597 then
-      t:read_temp(readout, dspin, t.C)
+      if read_temp_busy == "N" then
+         read_temp_busy = "Y"
+         t:read_temp(readout, dspin, t.C)
+         read_temp_busy = "N"
+      end
    end
    if ticks == 600 then
       getsensors()
@@ -35,7 +40,23 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
    end
    if motdetbal > 300 then
       motsent = 0
-      gpio.trig(motpin, gpio.INTR_ENABLE)
+      motdet=0
+      gpio.trig(motpin, gpio.INTR_UP, motcb)
+   end
+   if ldrbal == 10 then
+      gpio.trig(ldrpin, gpio.INTR_UP_DOWN, ldrcb)
+      daynight=gpio.read(ldrpin)
+--    ldrbal=0
+      if daynight == 1 then
+         set_volume(nightvol)
+         print(nightvol)
+      else
+         set_volume(dayvol)
+         print(dayvol)
+      end
+   end
+   if ldrbal < 11 then
+      ldrbal = ldrbal + 1
    end
    motdetbal = motdetbal + 1
    mainonbal = mainonbal + 1
@@ -48,8 +69,24 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
       mainonbal = 0
       mainoffbal = 0
       dht_read()
+      if dhtstats ~= dht.OK then
+         if dhtsent == 0 and thng_done == "Y" then
+            table.insert(SMSStack,"Raindrop%20Sensor%20did%20not%20get%20water%20from%20Fogger")
+            rainsent = 1
+         end
+      end
       if ds18b20p == "Y" then
-         t:read_temp(readout, dspin, t.C)
+         if read_temp_busy == "N" then
+            read_temp_busy = "Y"
+            t:read_temp(readout, dspin, t.C)
+            read_temp_busy = "N"
+         end
+      end
+      if nuttemp == 0 then
+         if nutfsent == 0 and thng_done == "Y" then
+            insert_ad(8)
+            nutfsent = 1
+         end
       end
       mainoffbal = curroff
       mainstat = 1
@@ -64,6 +101,7 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
       gpio.write(mainpin, 0) -- put OFF the main motor
       if rainp == "Y" then
          if (gpio.read(rainpin)) == 1 then
+            insert_ad(2)
             if rainsent == 0 and thng_done == "Y" then
                table.insert(SMSStack,"Raindrop%20Sensor%20did%20not%20get%20water%20from%20Fogger")
                rainsent = 1
@@ -71,24 +109,31 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
          end
          if hx711p == "Y" then
             if isTare ~= 0 then
-               weight=getAverageWeight(10)
+               getAverageWeight(10)
                if weight < 2 then
+                  insert_ad(3)
                   if hxsent == 0 and thng_done == "Y" then
                      table.insert(SMSStack,"Nutrient%20is%20remaining%20only%20"..string.format("%0.3f",weight).."%20litres")
                      hxsent = 1
                   end
                end
             end
-            if isTare == 0 and taresent == 0 and thng_done == "Y" then
-               table.insert(SMSStack,"Nutrient%20weight%20is%20not%20tared")
-               taresent = 1
+            if isTare == 0 then
+               insert_ad(4)
+               if taresent == 0 and thng_done == "Y" then
+                  table.insert(SMSStack,"Nutrient%20weight%20is%20not%20tared")
+                  taresent = 1
+               end
             end
          end
          if ds18b20p == "Y" then
-            if nuttemp > currtemp and connected == "Y" then
-               if nuttsent == 0 and thng_done == "Y" then
-                  table.insert(SMSStack,"Nutrient%20temperature%20has%20increased%20to%20"..nuttemp)
-                  nuttsent = 1
+            if nuttemp > currtemp then
+               insert_ad(5)
+               if connected == "Y" then
+                  if nuttsent == 0 and thng_done == "Y" then
+                     table.insert(SMSStack,"Nutrient%20temperature%20has%20increased%20to%20"..nuttemp)
+                     nuttsent = 1
+                  end
                end
             end
          end

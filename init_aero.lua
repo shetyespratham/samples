@@ -22,30 +22,38 @@ twtwn=""
 twywn=""
 
 -- GPIO6-11  spi flash
+-- GPIO12  boot fails if pulld high
 -- GPIO20,24,28-31  not available
 -- GPIO34-39 only input
+-- Strapping pins 0,2,4,5,12,15
+-- pins high at boot 1,3,5,6-11,14,15
+-- UART1 9-10 rx-tx  reassign to 4-2
+-- UART0 3-1  rx-tx
+-- UART2 16-17 rx-tx
 
 phapin=34
 ldrpin=35
 ppmapin=36
 rainapin=39
 
-phpin=4         
+phpin=3         
 ppmpin=13	
 dspin=14
+touchpin=15
 airpin=16	
 fspin=17
 mainpin=18	
 dhtpin=19
+-- 20 missing
 rainpin=21  -- 0 if wet 1 if dry
 hx711_clk=22
 hx711_dat=23
+-- 24 missing
 motpin=25       
 solnwpin=26
 solnapin=27
 solnbpin=32
 solncpin=33
-touchpin=15
 padno=3
 
 coefficient=-0.00004906289863605140
@@ -223,6 +231,7 @@ end
 hxsent=0
 rainsent=0
 taresent=0
+weight=0
 function tare(t)
    sum=hx711_read()
    sum=0
@@ -233,15 +242,38 @@ function tare(t)
    isTare=1
    return offsetAod
 end
+nowAodValue=0
+newAodValue=0
+tminus=0
 function getAverageWeight(t)
-   nowAodValue=0
-   for i=1,t,1 do
-       nowAodValue=nowAodValue+hx711_read()
+--   nowAodValue=0
+   tminus = 0
+   if nowAodValue == 0 then
+      for i=1,t,1 do
+          nowAodValue=nowAodValue+hx711_read()
+      end
+   else
+      for i=1,t,1 do
+          newAodValue=hx711_read()
+          if newAodValue > (nowAodValue + (nowAodValue + 0.02)) or
+             newAodValue < (nowAodValue - (nowAodValue + 0.02)) then
+             tminus = tminus + 1
+          else
+             nowAodValue=nowAodValue+newAodValue
+          end
+      end
    end
-   nowAodValue=nowAodValue/t
+   if tminus ~= t then
+      if tminus > 0 then
+         nowAodValue=nowAodValue/(t - tminus)
+      else
+         nowAodValue=nowAodValue/t
+      end
+   end
    print("newAodValue="..nowAodValue)
    weight=(nowAodValue-offsetAod) * coefficient
-   return weight / calibrate  -- -2.55
+   weight=weight / calibrate -- -2.525
+-- return weight 
 end
 function hx711_read()
   tmr.wdclr()
@@ -411,31 +443,41 @@ cheaders = {
 connection = http.createConnection("https://api.thingspeak.com/channels/4/feeds.json?api_key=F4", http.DELETE, { } )
 function make_connection()
    connection = http.createConnection("https://api.thingspeak.com/channels/"..hookchnlid.."/feeds.json?api_key="..usrapikey, http.DELETE, { headers=cheaders } )
+   connection_made = "Y"
    connection:on("complete", function(status)
      print("Request completed with status code =", status)
-     if status == 200 then
-        connection_made = "Y"
-     end
    end)
 end
 
 hookcmd="none"
 function gethooks()
     hookcmd="none"
-    http.get("http://api.thingspeak.com/channels/"..hookchnlid.."/fields/1.json?api_key="..hookwkey.."&results=1", function(code, data)
+    http.get("http://api.thingspeak.com/channels/"..hookchnlid.."/fields/1.xml?api_key="..hookrkey.."&results=1", function(code, data)
        if (code < 0) then
           print("Request failed")
        else
-          tparse = sjson.decode(data)
-          for k,v in pairs(tparse) do
-              for a,b in pairs(v) do
-                  if a == "field1" then
-                     hookcmd = b
-                  end
-              end
+          i, j = string.find(data, "<field1>getip</field1>")
+          if i ~= nil then
+             hookcmd = "getip"
+             if connection_made == "Y" then
+                connection:request()
+             end
           end
-          if connection_made == "Y" then
-             connection:request()
+
+          i, j = string.find(data, "<field1>restart</field1>")
+          if i ~= nil then
+             hookcmd = "restart"
+             if connection_made == "Y" then
+                connection:request()
+             end
+          end
+
+          i, j = string.find(data, "<field1>startweb</field1>")
+          if i ~= nil then
+             hookcmd = "startweb"
+             if connection_made == "Y" then
+                connection:request()
+             end
           end
        end
     end)
@@ -605,17 +647,26 @@ function motcb()
 -- value becomes 1 after motions
    gpio.trig(motpin, gpio.INTR_DISABLE)
    motdet=1
+   if daynight == 1 then
+      insert_ad(6)
+   end
    motdetbal=0
    if daynight == 1 and motsent == 0 and thng_done == "Y" then
       table.insert(SMSStack,"Motion%20detected%20in%20night%20time%20before%20"..mottim.."%20minutes")
       motsent = 1
    end
 end
-
+ldrbal=0
 function ldrcb(level, pulse1, eventcnt)
 -- value becomes 1 after light goes dark
    gpio.trig(ldrpin, gpio.INTR_DISABLE)
    daynight=gpio.read(ldrpin)
+   ldrbal=0
+   if daynight == 1 then
+      set_volume(nightvol)
+   else
+      set_volume(dayvol)
+   end
 end
 
 dhtstats=0
@@ -645,17 +696,18 @@ function dht_read()
       end
    end
    if dhtstats == dht.OK then
---    print("currtemp="..currtemp)
---    print("currhumid="..currhumid)
---    print("temp="..temp)
---    print("humi="..humi)
       for i=1, #tempfrom do
          if currtemp >= tempfrom[i] and currtemp < tempto[i] then
             curron=tempon[i]
             curroff=tempoff[i]
          end
       end
+      if daynight == 1 then
+         curroff = curroff + (curroff * nightoff / 100)
+      end
+      curroff = math.floor(curroff + (curroff * humidoff * ((currhumid - 50) / 10) / 100))
    else
+      insert_ad(7)
       if dhtsent == 0 then
          if connected == "Y" and thng_done == "Y" then
             table.insert(SMSStack,"Humidity%20and%20Temperature%20Sensor%20did%20not%20read%20data")
@@ -664,11 +716,9 @@ function dht_read()
       end
       curron=3
       curroff=600
+      currhumid=50
+      currtemp=30
    end
-   if daynight == 1 then
-      curroff = curroff + (curroff * nightoff / 100)
-   end
-   curroff = math.floor(curroff + (curroff * humidoff * ((currhumid - 50) / 10) / 100))
 end
 
 function m.onTouch(pads)
@@ -721,12 +771,16 @@ function m.config()
    m._tp:intrEnable()
 end
 nuttsent=0
+nutfsent=0
 function readout(temp)
    if t.sens then
    end
    for addr, temp in pairs(temp) do
 --    nutaddr=addr
       nuttemp = temp
+   end
+   if nuttemp == nil then
+      nuttemp = 0
    end
 end
 ssidlist=""
@@ -748,14 +802,47 @@ function wifi_scan()
        end
    end)
 end
+function uart_setup()
+   uart.setup(1, 9600, 8, uart.PARITY_NONE, uart.STOPBITS_1, {tx = 4, rx = 2})
+   uart.start(1)
+   s=[[\x7e\xff\x06\x09\x00\x00\x02\xef]] --microsd
+   s=s:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16)) end)
+   uart.write(1,s)
+end
+dayvol=30
+nightvol=18
+function set_volume(vol)
+   s=[[\x7e\xff\x06\x06\x00\x00]]
+   tv=[[\xef]]
+   v=string.char(vol) 
+   s=s:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16)) end)
+   tv=tv:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16)) end)
+   uart.write(1,s,v,tv)
+end
+function folder_repeat()   
+   s=[[\x7e\xff\x06\x17\x00\x00\x01\xef]] -- folder 1 repeat
+   s=s:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16)) end)
+   uart.write(1,s)
+end
+function insert_ad(adnum)
+   s=[[\x7e\xff\x06\x13\x00\x00]]
+   tv=[[\xef]]
+   v=string.char(adnum) 
+   s=s:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16)) end)
+   tv=tv:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16)) end)
+   uart.write(1,s,v,tv)
+end
+
 -- actual execution
+
 getsensors() 
-if file.exists("Calibrate.mcu") then
+if file.exists("Calibration.mcu") then
    open = file.open or io.open
-   fh = open("Calibrate.mcu", "r")
+   fh = open("Calibration.mcu", "r")
    x=fh:read()
    fh:close()
-   calibrate=tonumber(x) -- -2.55
+   calibrate=tonumber(x) -- -2.535
+   print("Calibration value is "..calibrate)
 end
 if file.exists("TareData.mcu") then
    open = file.open or io.open
@@ -890,8 +977,14 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
        if thng_done == "Y" and startwritten == "N" then
           writestartrecord()
        end
+       if thng_done == "Y" and startwritten == "Y" and connection_made == "Y" then
+          if hookcmd == "none" then
+             gethooks()
+          end
+       end
        if thng_done == "Y" and startwritten == "Y" and connection_made == "N" then
           make_connection()
+          print("made connection")
        end
        if hookcmd == "restart" then
           node.restart()
@@ -904,6 +997,7 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
           hookcmd = "none"
           if web_started ~= "Y" then
              web_started = "Y"
+             table.insert(SMSStack,"Starting%20Webserver%20on%20"..extip)
              print("Starting web server")
              dofile("SprayWorld.lua")
           end
@@ -964,21 +1058,37 @@ tptimer:register(2000, tmr.ALARM_AUTO, function()
         end
         if tpctr == 4 then
            wifi_scan()
+           uart_setup()
         end
-        if tpctr == 6 and aero_started == "N" then
-           aero_started = "Y"
-           dofile("aeroponics.lua")
-        end
-        if tpctr == 8 then
+        if tpctr == 6 then
+           folder_repeat()
            wifi.ap.config(cfg)
            wifi.ap.setip(cfg)
         end
-        if tpctr > 9 then
-           aptimer:start();
+        if tpctr == 8 or tpctr == 9 or tpctr == 10 or tpctr == 11 then
+           getAverageWeight(5)
+        end
+        if tpctr == 8 then
+           nowAodValue=0
+           newAodValue=0
+        end
+        if tpctr == 12 then
+           set_volume(dayvol)
+           insert_ad(1)
+        end
+        if tpctr == 14 and aero_started == "N" then
+           if file.exists("CurrentSettings.cfg") then
+              if file.exists("SystemSensors.mcu") then
+                 aero_started = "Y"
+                 dofile("aeroponics.lua")
+              end
+           end
         end
         tpctr = tpctr + 1
-        if tpctr < 10 then
+        if tpctr < 15 then
            tptimer:start();
+        else
+           aptimer:start();
         end
 end)
 tptimer:start();

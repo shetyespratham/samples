@@ -2,7 +2,7 @@
 <html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script type="text/javascript">
-var loggedin="no";
+var loggedin="yes";
 var savedyn="n";
 var dirty=0;
 
@@ -43,21 +43,64 @@ function netsave() {
     xhttp.send();
 }
 function uploadfile() {
-    var upname = document.getElementById("upname").value;
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function() {
-       if (this.readyState == 4 && this.status == 200) {
-          uploaded=this.responseText;
-          if (uploaded == "yes") {
-               alert("File uploaded Successfully");
-          } else {
-               alert("Error; Could not upload the file");
-                 }
+    var input = document.getElementById("upname").value;
+    var file = input;
+    if (file.length == 0) {
+       alert('No file is selected');
+       return false;
+    }
+    filename = file.name;
+    filesize = file.size;
+    processFile();
+    input.addEventListener('change', processFile, false)
+    function processFile(e) {
+        var size = file.size;
+        var sliceSize=256;
+        var start = 0;
+        setTimeout(loop, 1);
+        function loop() {
+           var end = start + sliceSize;
+           if (size - end < 0) {
+              end = size;
+           }
+           var s = slice(file, start, end)
+
+           var reader = new FileReader();
+           reader.onload = function(event) {
+           filecontent=event.target.result;
+          var rawBytes = new Uint8Array(filecontent);
+
+          var hex = btoa(String.fromCharCode.apply(null,rawBytes));
+           uploadfilehttp(hex, filesize);
+           };
+           reader.readAsArrayBuffer(s);
+
+
+           if (end < size) {
+              start += sliceSize;
+              setTimeout(loop, 1);
+           }
         }
     }
-    xhttp.open("GET", "/upload?wuser=" + wuser + "&wpass=" + wpass + "&nuser=" + nuser + "&npass=" + npass, true)
-    xhttp.send();
-};
+    function slice(file, start, end) {
+      var slice = file.mozSlice ? file.mozSlice :
+                  file.webkitSlice ? file.webkitSlice :
+                  file.slice ? file.slice : noop;
+      return slice.bind(file)(start, end);
+    }
+    function noop() {
+    }
+}
+function uploadfilehttp(filecontent, filesize) {
+    fetch("/uploadfile?upload2file=" + filename + "&size=" + filesize + "&data=" + filecontent)
+      .then(response => response.text())
+      .then(result => {
+        if (result == "uploaded" ) {
+           alert(result)
+        }
+       })
+      .catch(error => console.log('error', error));
+}
 function calibrate() {
     var caldata = document.getElementById("calibid").value;
     if (isNaN(parseFloat(caldata))) {
@@ -147,7 +190,7 @@ function sendlogin() {
              document.getElementById("lgnbut").disabled=true;
           } else {
                alert("Please enter correct login details");
-            }
+          }
        }
     };
     xhttp.open("GET", "/chkcred?user=" + user + "&pass=" + pass, true)
@@ -282,7 +325,75 @@ function thngsave() {
    xhttp.send();
 }
 
-   
+function getsensors() {   
+   var xhttp = new XMLHttpRequest();
+   xhttp.onreadystatechange = function() {
+      if (this.readyState == 4 && this.status == 200) {
+         if (this.responseText == "not found") {
+            alert(this.responseText);
+            return ;
+         }
+         var filerow=this.responseText.split("!");
+         if (filerow[0] == "true") {
+            document.getElementById("srainx").checked=true;
+         } else {
+            document.getElementById("srainx").checked=false;
+         }
+         if (filerow[1] == "true") {
+            document.getElementById("sdhtx").checked=true;
+         } else {
+            document.getElementById("sdhtx").checked=false;
+         }
+         if (filerow[2] == "true") {
+            document.getElementById("smainx").checked=true;
+         } else {
+            document.getElementById("smainx").checked=false;
+         }
+         if (filerow[3] == "true") {
+            document.getElementById("sfsx").checked=true;
+         } else {
+            document.getElementById("sfsx").checked=false;
+         }
+         if (filerow[4] == "true") {
+            document.getElementById("sairx").checked=true;
+         } else {
+            document.getElementById("sairx").checked=false;
+         }
+         if (filerow[5] == "true") {
+            document.getElementById("sldrx").checked=true;
+         } else {
+            document.getElementById("sldrx").checked=false;
+         }
+         if (filerow[6] == "true") {
+            document.getElementById("shx711x").checked=true;
+         } else {
+            document.getElementById("shx711x").checked=false;
+         }
+         if (filerow[7] == "true") {
+            document.getElementById("sds18b20x").checked=true;
+         } else {
+            document.getElementById("sds18b20x").checked=false;
+         }
+         if (filerow[8] == "true") {
+            document.getElementById("sppmx").checked=true;
+         } else {
+            document.getElementById("sppmx").checked=false;
+         }
+         if (filerow[9] == "true") {
+            document.getElementById("snutphx").checked=true;
+         } else {
+            document.getElementById("snutphx").checked=false;
+         }
+         if (filerow[10] == "true") {
+            document.getElementById("smotionx").checked=true;
+         } else {
+            document.getElementById("smotionx").checked=false;
+         }
+      }
+   };
+   xhttp.open("GET", "/getsensors", true)
+   xhttp.send();
+}
 function savesensors() {
    filerow = document.getElementById("srainx").checked;
    filerow = filerow + "!" + document.getElementById("sdhtx").checked;
@@ -753,6 +864,7 @@ lab2 {
   <input type="checkbox" id="sppmx"> Analog TDS sensor <br>
   <input type="checkbox" id="snutphx"> Analog PH sensor <br>
   <input type="checkbox" id="smotionx"> Motion Detection sensor <br><br>
+  <button type="button" id="sensorbutid0" onclick="getsensors()">Load Sensors</button> 
   <button type="button" id="sensorbutid" onclick="savesensors()">Save Sensors</button> <br>
 </div>
 

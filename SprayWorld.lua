@@ -1,7 +1,7 @@
 
 -- Start a simple http server
 -- aptimer:unregister()
-loggedin="no"
+loggedin="yes"
 sendingidx=0
 function split(s)
    result = {};
@@ -18,10 +18,11 @@ end
 --   end
 --   return result;
 --end
+is=0
 function nextChunk(c, filetype)
     open = file.open or io.open    
     f = open(f2opn, "r")
-    f:seek("set", i)
+    f:seek("set", is)
     abcd = f:read(1024)
     if not abcd then
        c:close()
@@ -29,7 +30,7 @@ function nextChunk(c, filetype)
        collectgarbage()
        return
     end
-    if i == 0 then
+    if is == 0 then
        if filetype == "gz" then
           c:send("HTTP\/1.1 200 \r\nContent-Type: text\/html\r\nContent-Encoding: gzip\r\n\r\n" .. abcd)
        end
@@ -45,7 +46,7 @@ function nextChunk(c, filetype)
     else
        c:send(abcd)
     end
-    i = i + 1024
+    is = is + #abcd
     f:close()
     collectgarbage()
 end
@@ -65,61 +66,73 @@ function hms(a)
    return (string.format("%02d:%02d:%02d", hours, mins, secs))
 end
 print("Starting Web Server from inside SprayWorld.lc")
+uploadstarted=""
+uploadfilename=""
 srv=net.createServer(net.TCP, 2)
 srv:listen(80,function(conn)
   conn:on("receive",function(conn,payload)
      if string.find(payload, "GET \/ ") then
-        i=0
+        is = 0
         sendingidx=1
         f2opn = "ShetyesSprayer.html.gz"
         nextChunk(conn, "gz")
      end
 --     if string.find(payload, "GET \/Pratham.jpg") then
---        i=0
+--        is = 0
 --        sendingidx=1
 --        f2opn = "Pratham.jpg"
 --        nextChunk(conn, "jpg")
 --     end
      if string.find(payload, "GET \/failsafe.jpg") then
-        i=0
+        is = 0
         sendingidx=1
         f2opn = "failsafe.jpg"
         nextChunk(conn, "jpg")
      end
 --     if string.find(payload, "GET \/favicon.ico") then
---        i=0
+--        is = 0
 --        sendingidx=1
 --        f2opn = "favicon.ico"
 --        nextChunk(conn, "ico")
 --     end
      if string.find(payload, "GET \/chkcred") then
           fndt=split(payload)
+           print(syslgn, syspwd)
            if fndt.user == syslgn and fndt.pass == syspwd then
-                 conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nyes")
-                 loggedin="yes"
+              print(syslgn.."***"..syspwd.."$$$")
+--            conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/plain\r\n\r\nyes")
+              loggedin="yes"
+              connsend="yes"
            else
-              conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nno")
+--            conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/plain\r\n\r\nno")
               loggedin="no"
+              connsend="no"
            end
+           conn:send(connsend)
      end
      if loggedin == "yes" then
         if string.find(payload,"GET \/getssidlist") then
            if ssidlist ~= nil then
-              conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..ssidlist)
+--            conn:send("HTTP\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..ssidlist)
+              connsend=ssidlist
            else
-              conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n")
+              connsend="nil"
            end
+           conn:send(connsend)
         end     
         if string.find(payload,"GET \/restart") then
-           srv:close()
            node.restart()
+           srv:close()
         end
         if string.find(payload, "GET \/areyouthere") then
            if myip then
-              conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..myip)
+--            conn:send("HTTP\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..myip)
+              connsend=myip
            else
-              conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n")
+--            conn:send("HTTP\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n")
+              connsend="nil"
            end
+           conn:send(connsend)
         end
         if string.find(payload, "GET \/netsave") then
            fndt=split(payload)
@@ -128,7 +141,8 @@ srv:listen(80,function(conn)
            fh:write(fndt.ssid.."!"..fndt.wpass.."!"..fndt.syslgn.."!"..fndt.syspwd)
            fh:flush()
            fh:close()
-           conn:send("HTTP\/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nyes")
+--         conn:send("HTTP\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nyes")
+           conn:send("yes")
         end
         if string.find(payload, "GET \/saverourec") then
            fndt=split(payload)
@@ -140,7 +154,7 @@ srv:listen(80,function(conn)
               routers1=""
               match="N"
               recs=splitr(routers.."!", "!")
-              for i=1, #recs do
+              for i = 1, #recs do
                   flds=splitr(recs[i].."|", "|")
                   if (flds[1] == fndt.roussid) then
                       flds[2] = fndt.roupwd
@@ -164,7 +178,45 @@ srv:listen(80,function(conn)
            fh:write(routers1)
            fh:flush()
            fh:close()
-           conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nRecord saved")
+--         conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nRecord saved")
+           conn:send("Record saved")
+        end
+        if string.find(payload,"GET \/uploadfile") then
+           fndt=split(payload)
+           if fndt.upload2file ~= "CurrentSettings.cfg" and
+              fndt.upload2file ~= "SystemSensors.mcu" and
+              fndt.upload2file ~= "ThingSpeak.mcu" then
+              conn:send("You can upload only CurrentSettigs.cfg or SystemSensors.mcu or ThingSpeak.mcu files")
+           else
+              if uploadstarted == "Y" then
+                 file.open(fndt.upload2file, "a+")
+              else
+                 uploadstarted="Y"
+                 uploadfilename=fndt.upload2file
+                 datarecd = 0
+                 file.open(fndt.upload2file, "w+")
+                 filesize = fndt.size
+              end
+              binstr = encoder.fromBase64(fndt.data)
+              datarecd = datarecd + #binstr
+              file.write(binstr)
+              file.flush()
+              file.close()
+              if datarecd == filesize then
+                 uploadstarted = ""
+                 uploadfilename=""
+                 if string.find(fndt.upload2file, ".lua") then
+                    file.open("init_compile.lua", "a+")
+                    file.writeline("node.compile(\""..filename.."\")")
+                    file.close()
+                    conn:send("lua source uploaded; will get compiled and used during next boot")
+                 else
+                    conn:send("uploaded")
+                 end
+              else
+                 conn:send("uploading")
+              end
+           end
         end
         if string.find(payload, "GET \/loadfile") then
            fndt=split(payload)
@@ -173,10 +225,13 @@ srv:listen(80,function(conn)
               fh = open(fndt.file2load, "r")
               loadedrec=fh:read()
               fh:close()
-              conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..loadedrec)
+--            conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..loadedrec)
+              connsend=loadedrec
            else           
-              conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nnot found")
+--            conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nnot found")
+              connsend="not1found"
            end
+           conn:send(connsend)
         end        
         if string.find(payload, "GET \/savefile") then
            fndt=split(payload)
@@ -185,7 +240,8 @@ srv:listen(80,function(conn)
            fh:write(fndt.data)
            fh:flush()
            fh:close()
-           conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")
+--         conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")
+           conn:send("saved")
         end        
         if string.find(payload, "GET \/thngload") then
 --         fndt=split(payload)
@@ -193,12 +249,15 @@ srv:listen(80,function(conn)
               open = file.open or io.open
               fh = open("ThingSpeak.mcu", "r")
               loadedrec=fh:read()
-              loadedrec=loadedrec.."!https://api.thingspeak.com/update?api_key="..hookwkey.."&field="
+              loadedrec=loadedrec.."!https://api.thingspeak.com/update?api_key="..hookwkey.."&field1="
               fh:close()
-              conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..loadedrec)
+--            conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..loadedrec)
+              connsend=loadedrec
            else           
-              conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nnot found")
+--            conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nnot found")
+              connsend="not2found"
            end
+           conn:send(connsend)
         end        
         if string.find(payload, "GET \/thngsave") then
            fndt=split(payload)
@@ -207,9 +266,11 @@ srv:listen(80,function(conn)
            fh:write(fndt.thnguapi.."!"..fndt.twisid.."!"..fndt.twitkn.."!"..fndt.twytpn.."!"..fndt.twypn.."!"..fndt.twtwn.."!"..fndt.twywn)
            fh:flush()
            fh:close()
-           conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")
+--         conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")
+           conn:send("saved")
         end        
         if string.find(payload,"GET \/stare") then
+           connsend="not saved"
            if hx711p == "Y" then
               tare(10)
               open = file.open or io.open
@@ -217,10 +278,13 @@ srv:listen(80,function(conn)
               fh:write(tostring(offsetAod))
               fh:flush()
               fh:close()
-              conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")
+--            conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")
+              connsend="saved"
            end
+           conn:send(connsend)
         end
         if string.find(payload,"GET \/calibrate") then
+           connsend="not saved"
            if hx711p == "Y" then
               fndt=split(payload)
               open = file.open or io.open
@@ -228,8 +292,10 @@ srv:listen(80,function(conn)
               fh:write(fndt.caldata)
               fh:flush()
               fh:close()
-              conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")
+--            conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")
+              connsend="saved"
            end
+           conn:send(connsend)
         end
         if string.find(payload,"GET \/savesensors") then
            fndt=split(payload)
@@ -238,8 +304,17 @@ srv:listen(80,function(conn)
            fh:write(fndt.data)
            fh:flush()
            fh:close()
-           getsensors()  --kailasshetye  read sensors from SystemSensors.mcu and update fields
-           conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")
+--         getsensors()  --kailasshetye  read sensors from SystemSensors.mcu and update fields
+--         conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\nsaved")
+           conn:send("saved")
+        end
+        if string.find(payload,"GET \/getsensors") then
+           open = file.open or io.open
+           fh = open("SystemSensors.mcu", "r")
+           loadedrec=fh:read()
+           fh:close()
+--         conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..loadedrec)
+           conn:send(loadedrec)
         end
         if string.find(payload,"GET /sfunction") then
            if rainp == "Y" then
@@ -348,7 +423,8 @@ srv:listen(80,function(conn)
               sendstr=sendstr.."!Abs!Abs"
            end 
            sendstr=sendstr.."!"..tostringhms(node.uptime())
-           conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..sendstr)
+--         conn:send("Http\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..sendstr)
+           conn:send(sendstr)
         end 
      end
   end)
