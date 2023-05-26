@@ -110,7 +110,47 @@ srv:listen(80,function(conn)
            end
            conn:send(connsend)
      end
+     if string.find(payload,"GET \/closethings") then
+        file.rename("ThingSpeak.mcu", "ThingSpeak.mcu1")
+        conn:send("OK")
+     end
+     if string.find(payload,"GET \/openthings") then
+        file.rename("ThingSpeak.mcu1", "ThingSpeak.mcu")
+        conn:send("OK")
+     end
      if loggedin == "yes" then
+        if string.find(payload,"GET \/dayup") then
+           dayvol=dayvol + 1
+           if dayvol > 30 then
+              dayvol = 30
+           end
+           ldrbal=9
+           conn:send("Volume set to "..dayvol)
+        end
+        if string.find(payload,"GET \/daydn") then
+           dayvol=dayvol - 1
+           if dayvol < 1 then
+              dayvol = 1
+           end
+           ldrbal=9
+           conn:send("Volume set to "..dayvol)
+        end
+        if string.find(payload,"GET \/nightup") then
+           nightvol=nightvol + 1
+           if nightvol > 30 then
+              nightvol = 30
+           end
+           ldrbal=9
+           conn:send("Volume set to "..nightvol)
+        end
+        if string.find(payload,"GET \/nightdn") then
+           nightvol=nightvol - 1
+           if nightvol < 1 then
+              nightvol = 1
+           end
+           ldrbal=9
+           conn:send("Volume set to "..dayvol)
+        end
         if string.find(payload,"GET \/getssidlist") then
            if ssidlist ~= nil then
 --            conn:send("HTTP\/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text\/html\r\n\r\n"..ssidlist)
@@ -326,7 +366,7 @@ srv:listen(80,function(conn)
            else
               sendstr="Abs"
            end
-           dht_readweb()
+--         dht_readweb()
 --         if ds18b20p == "Y" then
 --            t:read_temp(readout, dspin, t.C)
 --         end
@@ -390,6 +430,7 @@ srv:listen(80,function(conn)
               sendstr=sendstr.."!Abs"
            end 
            if hx711p == "Y" then
+              getAverageWeight(3)
               sendstr=sendstr.."!"..tostring(weight)
            else
               sendstr=sendstr.."!Abs"

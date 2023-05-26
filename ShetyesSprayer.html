@@ -101,6 +101,34 @@ function uploadfilehttp(filecontent, filesize) {
        })
       .catch(error => console.log('error', error));
 }
+function dayup() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+    }
+    xhttp.open("GET", "/dayup", true)
+    xhttp.send();
+};
+function daydn() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+    }
+    xhttp.open("GET", "/daydn", true)
+    xhttp.send();
+};
+function nightup() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+    }
+    xhttp.open("GET", "/nightup", true)
+    xhttp.send();
+};
+function nightdn() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+    }
+    xhttp.open("GET", "/nightdn", true)
+    xhttp.send();
+};
 function calibrate() {
     var caldata = document.getElementById("calibid").value;
     if (isNaN(parseFloat(caldata))) {
@@ -389,6 +417,9 @@ function getsensors() {
          } else {
             document.getElementById("smotionx").checked=false;
          }
+         document.getElementById("smotact").value=filerow[11];
+         document.getElementById("sspkday").value=filerow[12];
+         document.getElementById("sspknight").value=filerow[13];
       }
    };
    xhttp.open("GET", "/getsensors", true)
@@ -406,6 +437,9 @@ function savesensors() {
    filerow = filerow + "!" + document.getElementById("sppmx").checked;
    filerow = filerow + "!" + document.getElementById("snutphx").checked;
    filerow = filerow + "!" + document.getElementById("smotionx").checked;
+   filerow = filerow + "!" + document.getElementById("smotact").value
+   filerow = filerow + "!" + document.getElementById("sspkday").value
+   filerow = filerow + "!" + document.getElementById("sspknight").value
    var xhttp = new XMLHttpRequest();
    xhttp.onreadystatechange = function() {
       if (this.readyState == 4 && this.status == 200) {
@@ -863,7 +897,10 @@ lab2 {
   <input type="checkbox" id="sds18b20x"> DS18B20 temp sensor for nutrients <br>
   <input type="checkbox" id="sppmx"> Analog TDS sensor <br>
   <input type="checkbox" id="snutphx"> Analog PH sensor <br>
-  <input type="checkbox" id="smotionx"> Motion Detection sensor <br><br>
+  <input type="checkbox" id="smotionx"> Motion Detection sensor <br>
+  <label>Motion light active seconds</label> <input type="number" id="smotact" ) style="width: 50px" > <br>
+  <label>Speaker Day Volume (1-30) </label> <input type="number" id="sspkday" ) style="width: 50px" > <br>
+  <label>Speaker Night Volume (1-30) </label> <input type="number" id="sspknight" ) style="width: 50px" > <br>
   <button type="button" id="sensorbutid0" onclick="getsensors()">Load Sensors</button> 
   <button type="button" id="sensorbutid" onclick="savesensors()">Save Sensors</button> <br>
 </div>
@@ -906,7 +943,11 @@ System started before <input id="sysstrtbal" readonly style=width: 50px"> H:M:S<
 
   <button type="button" id="sbut" onclick="sfunction()">Update Values</button>
   <button type="button" id="sbutt" onclick="stare()">Tare Nutrient Scale</button>
-  <button type="button" id="sbutt1" onclick="calibrate()">Set Calibration Value</button><input name="calib" id="calibid" type="text"  style="width: 50px"></p>
+  <button type="button" id="sbutt1" onclick="calibrate()">Set Calibration Value</button><input name="calib" id="calibid" type="text"  style="width: 50px"><br>
+Day Volume <button type="button" id="dayup" onclick="dayup()">Up</button>
+           <button type="button" id="daydn" onclick="daydn()">Dn</button>
+Night Volume <button type="button" id="nightup" onclick="nightup()">Up</button>
+           <button type="button" id="nightdn" onclick="nightdn()">Dn</button>
 </div>
 
 <div id="U" class="tabcontent" align="center">

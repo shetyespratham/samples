@@ -50,6 +50,7 @@ hx711_clk=22
 hx711_dat=23
 -- 24 missing
 motpin=25       
+motlightpin=5
 solnwpin=26
 solnapin=27
 solnbpin=32
@@ -115,10 +116,12 @@ extip=nil
 wifi.sta.on("got_ip", function(ev, info)
     myip = info.ip
     connected="Y"
+    rou_started = "Y"
 end)
 wifi.sta.on("disconnected", function(ev, info)
     myip = nil
     connected="N"
+    rou_started = "N"
 end)
 wifi.ap.on("sta_connected", function(ev, info)
     print("Client connected ")
@@ -190,6 +193,24 @@ function getsensors()
          motionp = "Y"
       else
          motionp = " "
+      end
+      motact = tonumber(tokens[12])
+      if motact < 10 then
+         motact = 10
+      end
+      dayvol = tonumber(tokens[13])
+      if dayvol < 1 then
+         dayvol = 1
+      end
+      if dayvol > 30 then
+         dayvol = 30
+      end
+      nightvol = tonumber(tokens[14])
+      if nightvol < 1 then
+         nightvol = 1
+      end
+      if nightvol > 30 then
+         nightvol = 30
       end
    else
       rainp = " "
@@ -642,13 +663,16 @@ function Routers()
 end
 
 motdetbal=0
+motact=300
 motsent=0
 function motcb()
 -- value becomes 1 after motions
    gpio.trig(motpin, gpio.INTR_DISABLE)
    motdet=1
    if daynight == 1 then
-      insert_ad(6)
+      set_volume(30)
+      tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() insert_ad(6) end)
+      gpio.write(motlightpin, 1) -- put motion light on
    end
    motdetbal=0
    if daynight == 1 and motsent == 0 and thng_done == "Y" then
@@ -707,7 +731,8 @@ function dht_read()
       end
       curroff = math.floor(curroff + (curroff * humidoff * ((currhumid - 50) / 10) / 100))
    else
-      insert_ad(7)
+      set_volume(30)
+      tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() insert_ad(7) end)
       if dhtsent == 0 then
          if connected == "Y" and thng_done == "Y" then
             table.insert(SMSStack,"Humidity%20and%20Temperature%20Sensor%20did%20not%20read%20data")
@@ -812,6 +837,7 @@ end
 dayvol=30
 nightvol=18
 function set_volume(vol)
+   gpio.trig(ldrpin, gpio.INTR_DISABLE)
    s=[[\x7e\xff\x06\x06\x00\x00]]
    tv=[[\xef]]
    v=string.char(vol) 
@@ -831,6 +857,7 @@ function insert_ad(adnum)
    s=s:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16)) end)
    tv=tv:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16)) end)
    uart.write(1,s,v,tv)
+   ldrbal=0
 end
 
 -- actual execution
@@ -863,17 +890,18 @@ gpio.config( {gpio=hx711_clk, dir=gpio.OUT, pull=gpio.FLOATING}, {gpio=hx711_dat
 -- no need to setup
 -- end DHT22 setup
 
--- setup main, failsafe and airpump pins
-gpio.config( {gpio={mainpin,fspin,airpin}, dir=gpio.OUT, pull=gpio.PULL_UP })
+-- setup main, failsafe, airpump motion light pins
+gpio.config( {gpio={mainpin,fspin,airpin,motlightpin}, dir=gpio.OUT, pull=gpio.PULL_UP })
 
 -- setup ds18b20 temp sensor
 ow.setup(dspin)
 t = require("ds18b20")
+
 -- setup rainpin, ldrpin, dspin, motpin
 gpio.config({gpio={rainpin,ldrpin,motpin}, dir=gpio.IN, pull=gpio.PULL_UP })
 gpio.trig(ldrpin, gpio.INTR_UP_DOWN, ldrcb)
 gpio.trig(motpin, gpio.INTR_UP, motcb)
-
+gpio.write(motlightpin, 0) -- put motion light off
 -- setup 
 
  
@@ -964,7 +992,7 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
        if rou_started == "N" and
           file.exists("SystemSensors.mcu") and
           file.exists("CurrentSettings.cfg") then
-             rou_started = "Y"
+--           rou_started = "Y"
              Routers()
        end
        if connected == "Y" and thng_started == "N" then
@@ -1052,16 +1080,17 @@ tptimer=tmr.create()
 tpctr=0
 tptimer:register(2000, tmr.ALARM_AUTO, function()
         if tpctr == 0 then
+           uart_setup()
            print("inside tptimer")
            wifi.start()
            wifi.mode(wifi.STATIONAP)
         end
+        if tpctr == 2 then
+        end
         if tpctr == 4 then
            wifi_scan()
-           uart_setup()
         end
         if tpctr == 6 then
-           folder_repeat()
            wifi.ap.config(cfg)
            wifi.ap.setip(cfg)
         end
@@ -1069,13 +1098,20 @@ tptimer:register(2000, tmr.ALARM_AUTO, function()
            getAverageWeight(5)
         end
         if tpctr == 8 then
+           folder_repeat()
            nowAodValue=0
            newAodValue=0
         end
-        if tpctr == 12 then
-           set_volume(dayvol)
-           insert_ad(1)
+        if tpctr == 9 then
+           set_volume(30)
         end
+        if tpctr == 10 then
+           set_volume(30)
+           tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() insert_ad(1) end)
+        end
+--      if tpctr == 13 then
+--         set_volume(dayvol)
+--      end
         if tpctr == 14 and aero_started == "N" then
            if file.exists("CurrentSettings.cfg") then
               if file.exists("SystemSensors.mcu") then

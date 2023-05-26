@@ -15,16 +15,16 @@ onofftimer = tmr.create()
 onofftimer:register(1000, tmr.ALARM_AUTO, function()
 -- print("doing aeroponics")
    ticks = ticks + 1
-   if ticks == 597 then
-      if read_temp_busy == "N" then
-         read_temp_busy = "Y"
-         t:read_temp(readout, dspin, t.C)
-         read_temp_busy = "N"
-      end
-   end
-   if ticks == 600 then
-      getsensors()
-   end
+-- if ticks == 597 then
+--    if read_temp_busy == "N" then
+--       read_temp_busy = "Y"
+--       t:read_temp(readout, dspin, t.C)
+--       read_temp_busy = "N"
+--    end
+-- end
+-- if ticks == 600 then
+--    getsensors()
+-- end
    if ticks == 601 then
       dht_readweb()
       if dhtstats == dht.OK then
@@ -38,25 +38,27 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
       print("routimer unregistered")
       routimer:unregister();
    end
-   if motdetbal > 300 then
+   if motdetbal > motact then
       motsent = 0
       motdet=0
       gpio.trig(motpin, gpio.INTR_UP, motcb)
+      gpio.write(motlightpin, 0) -- put motion light off
    end
    if ldrbal == 10 then
+      print("INTR Enabled")
       gpio.trig(ldrpin, gpio.INTR_UP_DOWN, ldrcb)
       daynight=gpio.read(ldrpin)
---    ldrbal=0
       if daynight == 1 then
          set_volume(nightvol)
-         print(nightvol)
+--       print(nightvol)
       else
          set_volume(dayvol)
-         print(dayvol)
+--       print(dayvol)
       end
    end
    if ldrbal < 11 then
       ldrbal = ldrbal + 1
+--    print(ldrbal)
    end
    motdetbal = motdetbal + 1
    mainonbal = mainonbal + 1
@@ -84,7 +86,8 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
       end
       if nuttemp == 0 then
          if nutfsent == 0 and thng_done == "Y" then
-            insert_ad(8)
+            set_volume(30)
+            tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() insert_ad(8) end)
             nutfsent = 1
          end
       end
@@ -101,7 +104,8 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
       gpio.write(mainpin, 0) -- put OFF the main motor
       if rainp == "Y" then
          if (gpio.read(rainpin)) == 1 then
-            insert_ad(2)
+            set_volume(30)
+            tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() insert_ad(2) end)
             if rainsent == 0 and thng_done == "Y" then
                table.insert(SMSStack,"Raindrop%20Sensor%20did%20not%20get%20water%20from%20Fogger")
                rainsent = 1
@@ -111,7 +115,8 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
             if isTare ~= 0 then
                getAverageWeight(10)
                if weight < 2 then
-                  insert_ad(3)
+                  set_volume(30)
+                  tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() insert_ad(3) end)
                   if hxsent == 0 and thng_done == "Y" then
                      table.insert(SMSStack,"Nutrient%20is%20remaining%20only%20"..string.format("%0.3f",weight).."%20litres")
                      hxsent = 1
@@ -119,7 +124,8 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
                end
             end
             if isTare == 0 then
-               insert_ad(4)
+               set_volume(30)
+               tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() insert_ad(4) end)
                if taresent == 0 and thng_done == "Y" then
                   table.insert(SMSStack,"Nutrient%20weight%20is%20not%20tared")
                   taresent = 1
@@ -128,7 +134,8 @@ onofftimer:register(1000, tmr.ALARM_AUTO, function()
          end
          if ds18b20p == "Y" then
             if nuttemp > currtemp then
-               insert_ad(5)
+               set_volume(30)
+               tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() insert_ad(5) end)
                if connected == "Y" then
                   if nuttsent == 0 and thng_done == "Y" then
                      table.insert(SMSStack,"Nutrient%20temperature%20has%20increased%20to%20"..nuttemp)
