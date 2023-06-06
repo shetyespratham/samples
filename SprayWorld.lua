@@ -367,9 +367,9 @@ srv:listen(80,function(conn)
               sendstr="Abs"
            end
 --         dht_readweb()
---         if ds18b20p == "Y" then
---            t:read_temp(readout, dspin, t.C)
---         end
+           if ds18b20p == "Y" then
+              t18:read_temp(readout, dspin, t18.C)
+           end
            if dhtstats == dht.OK then
               sendstr=sendstr.."!"..tostring(currtemp)
               sendstr=sendstr.."!"..tostring(currhumid)

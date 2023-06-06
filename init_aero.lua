@@ -110,7 +110,7 @@ connected="N"
 cli_connected="N"
 myip=nil
 extip=nil
-
+httpconnect=0
 -- functions
 
 wifi.sta.on("got_ip", function(ev, info)
@@ -254,7 +254,6 @@ rainsent=0
 taresent=0
 weight=0
 function tare(t)
-   sum=hx711_read()
    sum=0
    for i=1,t,1 do
      sum=sum+hx711_read()
@@ -264,36 +263,14 @@ function tare(t)
    return offsetAod
 end
 nowAodValue=0
-newAodValue=0
-tminus=0
 function getAverageWeight(t)
---   nowAodValue=0
-   tminus = 0
-   if nowAodValue == 0 then
-      for i=1,t,1 do
-          nowAodValue=nowAodValue+hx711_read()
-      end
-   else
-      for i=1,t,1 do
-          newAodValue=hx711_read()
-          if newAodValue > (nowAodValue + (nowAodValue + 0.02)) or
-             newAodValue < (nowAodValue - (nowAodValue + 0.02)) then
-             tminus = tminus + 1
-          else
-             nowAodValue=nowAodValue+newAodValue
-          end
-      end
+   nowAodValue=0
+   for i=1,t,1 do
+       nowAodValue=nowAodValue+hx711_read()
    end
-   if tminus ~= t then
-      if tminus > 0 then
-         nowAodValue=nowAodValue/(t - tminus)
-      else
-         nowAodValue=nowAodValue/t
-      end
-   end
-   print("newAodValue="..nowAodValue)
-   weight=(nowAodValue-offsetAod) * coefficient
-   weight=weight / calibrate -- -2.525
+   nowAodValue=nowAodValue/t
+   weight=(nowAodValue-offsetAod) * coefficient / calibrate
+-- weight=weight / calibrate -- -2.525
 -- return weight 
 end
 function hx711_read()
@@ -353,10 +330,11 @@ function ThingSpeak()
    end
 end
 function getexternalip()
-   http.get("https://ifconfig.me/ip",
+   http.get("http://ifconfig.me/ip",
        function(code, data)
        if (code < 0) then
-         print("HTTP request failed")
+         print("HTTP request failed1")
+         print(code,data)
          extip="Nil"
        else
          extip=data
@@ -365,13 +343,14 @@ function getexternalip()
 end
 function sendRecord(SMSText)
    if thng_done == "Y" then
-   http.get("https://api.thingspeak.com/update?api_key="..recswkey.."&field1="..SMSText,
+   http.get("http://api.thingspeak.com/update?api_key="..recswkey.."&field1="..SMSText,
        function(code, data)
        if (code < 0) then
-         print("HTTP request failed")
+         print("HTTP request failed2")
+         print(code,data)
        else
          print(code, data)
-         print("Record added to channel")
+         print("Record added2 to channel")
        end
    end)
    end
@@ -381,10 +360,11 @@ function sendAlert(SMSText)
    http.get("https://api.thingspeak.com/update?api_key="..alrtwkey.."&field1="..SMSText,
        function(code, data)
        if (code < 0) then
-         print("HTTP request failed")
+         print("HTTP request failed3")
+         print(code,data)
        else
          print(code, data)
-         print("alert added to channel")
+         print("alert added3 to channel")
        end
    end)
    end
@@ -392,19 +372,21 @@ end
 startwritten="N"
 function writestartrecord()
    if thng_done == "Y" then
-   http.get("https://api.thingspeak.com/update?api_key="..ipwkey.."&field1="..myip.."!"..extip,
+   http.get("http://api.thingspeak.com/update?api_key="..ipwkey.."&field1="..myip.."!"..extip,
        function(code, data)
        if (code < 0) then
-         print("HTTP request failed")
+         print("HTTP request failed4")
+         print(code,data)
        else
          print(code, data)
-         print("IP record added to channel")
+         print("IP record added4 to channel")
          startwritten = "Y"
        end
    end)
    end
 end
 SMSStack={}
+blocksms = "Y"
 function sendSMS()
    if thng_done == "Y" then
    if file.exists("ThingSpeak.mcu") and connected == "Y" then
@@ -412,32 +394,41 @@ function sendSMS()
       table.remove(SMSStack)
       twytpn1 = string.sub(twytpn,2)
       twypn1 = string.sub(twypn, 2)
-      encoded=encoder.toBase64(twisid..":"..twitkn)
+      encoded=encoder.toBase64(twisid.."0:0"..twitkn)
       headers = {
         ["Content-Type"] = "application/x-www-form-urlencoded\r\n",
         ["Authorization"] = "Basic "..encoded
       }
       body = "To=%2B"..twypn1.."&From=%2B"..twytpn1.."&Body="..SMSText
-      http.post("https://api.twilio.com/2010-04-01/Accounts/"..twisid.."/Messages.json",
-           {headers = headers}, body,
-           function(code,data)
-           if (code < 0) then
-              print("Send SMS Failed")
-              table.insert(SMSStack,SMSText)
-           else
-              print(code, data)
-              print("SMS sent")
-           end
+      make_sms_conn(body, encoded)
+      sms_conn:request()
+      if httpconnect == -28674 then
+         print("retrying once")
+         make_sms_conn(body, encoded)
+         tmr.create():alarm(3000, tmr.ALARM_SINGLE, function() sms_conn:request() end)
+         
+      end
+--    http.post("https://api.twilio.com/2010-04-01/Accounts/"..twisid.."/Messages.json",
+--         {headers = headers}, body,
+--         function(code,data)
+--         if (code < 0) then
+--            print("Send SMS Failed1")
+----          table.insert(SMSStack,SMSText)
+--         else
+--            print(code, data)
+--            print("SMS sent")
+--         end
            tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() sendWhatsApp(SMSText) end)
-       end)
+--     end)
    end
    end
 end
 function sendWhatsApp(SMSText)
+   if blocksms == "N" then
    if file.exists("ThingSpeak.mcu") and connected == "Y" then
       twtwn1 = string.sub(twtwn, 2)
       twywn1 = string.sub(twywn, 2)
-      encoded=encoder.toBase64(twisid..":"..twitkn)
+      encoded=encoder.toBase64(twisid.."kvs:kvs"..twitkn)
       headers = {
         ["Content-Type"] = "application/x-www-form-urlencoded\r\n",
         ["Authorization"] = "Basic "..encoded
@@ -455,13 +446,14 @@ function sendWhatsApp(SMSText)
            tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() sendAlert(SMSText) end)
        end)
    end
+   end
 end
 connection_made = "N"
 cheaders = {
   Connection = "close",
   ["If-Modified-Since"] = "Sat, 27 Oct 2018 00:00:00 GMT",
 }
-connection = http.createConnection("https://api.thingspeak.com/channels/4/feeds.json?api_key=F4", http.DELETE, { } )
+connection = "X"
 function make_connection()
    connection = http.createConnection("https://api.thingspeak.com/channels/"..hookchnlid.."/feeds.json?api_key="..usrapikey, http.DELETE, { headers=cheaders } )
    connection_made = "Y"
@@ -470,12 +462,32 @@ function make_connection()
    end)
 end
 
+sms_conn_made = "N"
+sms_conn = "X"
+function make_sms_conn(body, encoded)
+   sms_headers= {
+        ["Content-Type"] = "application/x-www-form-urlencoded\r\n",
+        ["Authorization"] = "Basic "..encoded
+   }
+   sms_conn = http.createConnection("http://api.twilio.com/2010-04-01/Accounts/"..twisid.."/Messages.json", http.POST, { headers = sms_headers })
+   sms_conn_made="Y"
+   sms_conn:setbody(body)
+   sms_conn:on("complete", function(status)
+     print("SMS Sent with status code =", status)
+     if status == -28674 then
+        httpconnect = -28674
+     else
+        httpconnect = 0
+     end
+   end)
+end
+
 hookcmd="none"
 function gethooks()
     hookcmd="none"
     http.get("http://api.thingspeak.com/channels/"..hookchnlid.."/fields/1.xml?api_key="..hookrkey.."&results=1", function(code, data)
        if (code < 0) then
-          print("Request failed")
+          print("getting Hooks failed")
        else
           i, j = string.find(data, "<field1>getip</field1>")
           if i ~= nil then
@@ -484,7 +496,6 @@ function gethooks()
                 connection:request()
              end
           end
-
           i, j = string.find(data, "<field1>restart</field1>")
           if i ~= nil then
              hookcmd = "restart"
@@ -492,7 +503,6 @@ function gethooks()
                 connection:request()
              end
           end
-
           i, j = string.find(data, "<field1>startweb</field1>")
           if i ~= nil then
              hookcmd = "startweb"
@@ -509,7 +519,8 @@ function GetChannels()
     got_channels = "N"
     http.get("http://api.thingspeak.com/channels.json?api_key="..usrapikey,  function(code, data)
       if (code < 0) then
-        print("HTTP request failed")
+        print("HTTP request failed5")
+        print(code,data)
       else
         ParseData(data)
         print(code, data)
@@ -607,7 +618,8 @@ function CreateChannel(chnlname, fldname)
         {headers = headers}, body,
         function(code, data)
            if (code < 0) then
-              print("HTTP request failed")
+              print("HTTP request failed6")
+              print(code,data)
            else
               print(code, data)
            end
@@ -670,8 +682,7 @@ function motcb()
    gpio.trig(motpin, gpio.INTR_DISABLE)
    motdet=1
    if daynight == 1 then
-      set_volume(30)
-      tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() insert_ad(6) end)
+      table.insert(adtable,0605)
       gpio.write(motlightpin, 1) -- put motion light on
    end
    motdetbal=0
@@ -695,7 +706,7 @@ end
 
 dhtstats=0
 dhtsent=0
-lastdht=0
+lastdht=-99999
 function dht_readweb()
    if ((node.uptime()/1000000) - 1) > lastdht then
       lastdht=node.uptime()/1000000
@@ -731,8 +742,6 @@ function dht_read()
       end
       curroff = math.floor(curroff + (curroff * humidoff * ((currhumid - 50) / 10) / 100))
    else
-      set_volume(30)
-      tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() insert_ad(7) end)
       if dhtsent == 0 then
          if connected == "Y" and thng_done == "Y" then
             table.insert(SMSStack,"Humidity%20and%20Temperature%20Sensor%20did%20not%20read%20data")
@@ -743,6 +752,8 @@ function dht_read()
       curroff=600
       currhumid=50
       currtemp=30
+      print("DHTSTATS="..dhtstats)
+      table.insert(adtable,0704)
    end
 end
 
@@ -798,7 +809,7 @@ end
 nuttsent=0
 nutfsent=0
 function readout(temp)
-   if t.sens then
+   if t18.sens then
    end
    for addr, temp in pairs(temp) do
 --    nutaddr=addr
@@ -850,14 +861,31 @@ function folder_repeat()
    s=s:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16)) end)
    uart.write(1,s)
 end
-function insert_ad(adnum)
-   s=[[\x7e\xff\x06\x13\x00\x00]]
-   tv=[[\xef]]
-   v=string.char(adnum) 
-   s=s:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16)) end)
-   tv=tv:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16)) end)
-   uart.write(1,s,v,tv)
-   ldrbal=0
+ad_busy="N"
+adsecs=0
+adnum=0
+adtot=0
+adtable={}
+function insert_ad()
+   if ad_busy == "N" then
+      ad_busy = "Y"
+      if table.maxn(adtable) > 0 then
+--       print("adtable.maxn="..table.maxn(adtable))
+         adtot=adtable[table.maxn(adtable)]
+         adnum=math.floor(adtot/100)
+         adsecs=(adtot/100-adnum)*100
+--       print(adtot,adnum,adsecs)
+         table.remove(adtable)
+         s=[[\x7e\xff\x06\x13\x00\x00]]
+         tv=[[\xef]]
+         v=string.char(adnum) 
+         s=s:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16)) end)
+         tv=tv:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16)) end)
+         uart.write(1,s,v,tv)
+         ldrbal=10 - adsecs
+--       print("10-adsecs="..ldrbal,adsecs)
+      end
+   end
 end
 
 -- actual execution
@@ -880,6 +908,7 @@ if file.exists("TareData.mcu") then
    isTare=1
 else
    isTare=0
+   offsetAod=0
 end
 
 -- setup HX711 GPIO pins
@@ -895,7 +924,7 @@ gpio.config( {gpio={mainpin,fspin,airpin,motlightpin}, dir=gpio.OUT, pull=gpio.P
 
 -- setup ds18b20 temp sensor
 ow.setup(dspin)
-t = require("ds18b20")
+t18 = require("ds18b20")
 
 -- setup rainpin, ldrpin, dspin, motpin
 gpio.config({gpio={rainpin,ldrpin,motpin}, dir=gpio.IN, pull=gpio.PULL_UP })
@@ -1005,7 +1034,7 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
        if thng_done == "Y" and startwritten == "N" then
           writestartrecord()
        end
-       if thng_done == "Y" and startwritten == "Y" and connection_made == "Y" then
+       if thng_done == "Y" and startwritten == "Y" then
           if hookcmd == "none" then
              gethooks()
           end
@@ -1100,14 +1129,12 @@ tptimer:register(2000, tmr.ALARM_AUTO, function()
         if tpctr == 8 then
            folder_repeat()
            nowAodValue=0
-           newAodValue=0
         end
         if tpctr == 9 then
-           set_volume(30)
+           set_volume(dayvol)
         end
         if tpctr == 10 then
-           set_volume(30)
-           tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() insert_ad(1) end)
+           table.insert(adtable,0107)  -- 01 ad number 07 seconds
         end
 --      if tpctr == 13 then
 --         set_volume(dayvol)
