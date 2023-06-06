@@ -386,7 +386,6 @@ function writestartrecord()
    end
 end
 SMSStack={}
-blocksms = "Y"
 function sendSMS()
    if thng_done == "Y" then
    if file.exists("ThingSpeak.mcu") and connected == "Y" then
@@ -400,35 +399,33 @@ function sendSMS()
         ["Authorization"] = "Basic "..encoded
       }
       body = "To=%2B"..twypn1.."&From=%2B"..twytpn1.."&Body="..SMSText
-      make_sms_conn(body, encoded)
-      sms_conn:request()
-      if httpconnect == -28674 then
-         print("retrying once")
-         make_sms_conn(body, encoded)
-         tmr.create():alarm(3000, tmr.ALARM_SINGLE, function() sms_conn:request() end)
-         
-      end
---    http.post("https://api.twilio.com/2010-04-01/Accounts/"..twisid.."/Messages.json",
---         {headers = headers}, body,
---         function(code,data)
---         if (code < 0) then
---            print("Send SMS Failed1")
-----          table.insert(SMSStack,SMSText)
---         else
---            print(code, data)
---            print("SMS sent")
---         end
+--    make_sms_conn(body, encoded)
+--    sms_conn:request()
+--    if httpconnect == -28674 then
+--       print("retrying once")
+--       make_sms_conn(body, encoded)
+--       tmr.create():alarm(3000, tmr.ALARM_SINGLE, function() sms_conn:request() end)
+--    end
+      http.post("https://api.twilio.com/2010-04-01/Accounts/"..twisid.."/Messages.json",
+           {headers = headers}, body,
+           function(code,data)
+           if (code < 0) then
+              print("Send SMS Failed1")
+              table.insert(SMSStack,SMSText)
+           else
+              print(code, data)
+              print("SMS sent")
+           end
            tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() sendWhatsApp(SMSText) end)
---     end)
+       end)
    end
    end
 end
 function sendWhatsApp(SMSText)
-   if blocksms == "N" then
    if file.exists("ThingSpeak.mcu") and connected == "Y" then
       twtwn1 = string.sub(twtwn, 2)
       twywn1 = string.sub(twywn, 2)
-      encoded=encoder.toBase64(twisid.."kvs:kvs"..twitkn)
+      encoded=encoder.toBase64(twisid.."0:0"..twitkn)
       headers = {
         ["Content-Type"] = "application/x-www-form-urlencoded\r\n",
         ["Authorization"] = "Basic "..encoded
@@ -446,7 +443,6 @@ function sendWhatsApp(SMSText)
            tmr.create():alarm(1000, tmr.ALARM_SINGLE, function() sendAlert(SMSText) end)
        end)
    end
-   end
 end
 connection_made = "N"
 cheaders = {
@@ -462,30 +458,30 @@ function make_connection()
    end)
 end
 
-sms_conn_made = "N"
-sms_conn = "X"
-function make_sms_conn(body, encoded)
-   sms_headers= {
-        ["Content-Type"] = "application/x-www-form-urlencoded\r\n",
-        ["Authorization"] = "Basic "..encoded
-   }
-   sms_conn = http.createConnection("http://api.twilio.com/2010-04-01/Accounts/"..twisid.."/Messages.json", http.POST, { headers = sms_headers })
-   sms_conn_made="Y"
-   sms_conn:setbody(body)
-   sms_conn:on("complete", function(status)
-     print("SMS Sent with status code =", status)
-     if status == -28674 then
-        httpconnect = -28674
-     else
-        httpconnect = 0
-     end
-   end)
-end
+--sms_conn_made = "N"
+--sms_conn = "X"
+--function make_sms_conn(body, encoded)
+--   sms_headers= {
+--        ["Content-Type"] = "application/x-www-form-urlencoded\r\n",
+--        ["Authorization"] = "Basic "..encoded
+--   }
+--   sms_conn = http.createConnection("http://api.twilio.com/2010-04-01/Accounts/"..twisid.."/Messages.json", http.POST, { headers = sms_headers })
+--   sms_conn_made="Y"
+--   sms_conn:setbody(body)
+--   sms_conn:on("complete", function(status)
+--     print("SMS Sent with status code =", status)
+--     if status == -28674 then
+--        httpconnect = -28674
+--     else
+--        httpconnect = 0
+--     end
+--   end)
+--end
 
 hookcmd="none"
 function gethooks()
     hookcmd="none"
-    http.get("http://api.thingspeak.com/channels/"..hookchnlid.."/fields/1.xml?api_key="..hookrkey.."&results=1", function(code, data)
+    http.get("https://api.thingspeak.com/channels/"..hookchnlid.."/fields/1.xml?api_key="..hookrkey.."&results=1", function(code, data)
        if (code < 0) then
           print("getting Hooks failed")
        else
@@ -1003,6 +999,7 @@ aero_started="N"
 sysstartedsent="N"
 aptimer=tmr.create()
 aptimer:register(5000, tmr.ALARM_SEMI, function()
+       collectgarbage()
 --     print("Inside AP Timer")
        tptimer:unregister()
        if table.maxn(SMSStack) > 0 then
@@ -1052,9 +1049,9 @@ aptimer:register(5000, tmr.ALARM_SEMI, function()
        end
        if hookcmd == "startweb" then
           hookcmd = "none"
+          table.insert(SMSStack,"Running%20Webserver%20on%20"..extip)
           if web_started ~= "Y" then
              web_started = "Y"
-             table.insert(SMSStack,"Starting%20Webserver%20on%20"..extip)
              print("Starting web server")
              dofile("SprayWorld.lua")
           end
