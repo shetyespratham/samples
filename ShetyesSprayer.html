@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAABmJLR0QA/wD/AP+gvaeTAAAAX0lEQVQokc2SwQ7AIAhDC9H//2AP3UFDiAjbbfYItLEvCklBhxMxAGxDk8ZFdjqzmk+N1zY3tZiRxa8n1es/DAKea2TtNbYssGJS8p5XrBdSUkGvW25aTL97Dljr7/QA044cISQ0ai8AAAAASUVORK5CYII=" />
 <script type="text/javascript">
 var loggedin="yes";
 var savedyn="n";
@@ -101,6 +102,34 @@ function uploadfilehttp(filecontent, filesize) {
        })
       .catch(error => console.log('error', error));
 }
+function nxtsng() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+    }
+    xhttp.open("GET", "/nxtsng", true)
+    xhttp.send();
+};
+function prvsng() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+    }
+    xhttp.open("GET", "/prvsng", true)
+    xhttp.send();
+};
+function nxtfld() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+    }
+    xhttp.open("GET", "/nxtfld", true)
+    xhttp.send();
+};
+function prvfld() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+    }
+    xhttp.open("GET", "/prvfld", true)
+    xhttp.send();
+};
 function dayup() {
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
@@ -861,6 +890,7 @@ lab2 {
 }
 </style>
 <body bgcolor="White">
+<div align="center"> <img src="data:image/jpg;base64,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"></div>
    <h1 align="center"><b1>Shetyes Farms</b1></h1>
 
 <ul class="tab">
@@ -947,7 +977,11 @@ System started before <input id="sysstrtbal" readonly style=width: 50px"> H:M:S<
 Day Volume <button type="button" id="dayup" onclick="dayup()">Up</button>
            <button type="button" id="daydn" onclick="daydn()">Dn</button>
 Night Volume <button type="button" id="nightup" onclick="nightup()">Up</button>
-           <button type="button" id="nightdn" onclick="nightdn()">Dn</button>
+           <button type="button" id="nightdn" onclick="nightdn()">Dn</button><br>
+Song <button type="button" id="nxtsng" onclick="nxtsng()">Next</button>
+           <button type="button" id="prvsng" onclick="prvsng()">Prev</button>
+Folder <button type="button" id="nxtfld" onclick="nxtfld()">Next</button>
+           <button type="button" id="prvfld" onclick="prvfld()">Prev</button><br>
 </div>
 
 <div id="U" class="tabcontent" align="center">
